@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <title>Modelace řešení Golden Gate</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #45403a;
+            --accent: #6d9f88;
+            --success: #cc331d;
+            --gold: #edc079;
+            --silver: #b2ab9e;
+            --btc: #ffa23c;
+            --bg: #f9f4ec;
+            --card: #ffffff;
+        }
+
+        body { font-family: 'Raleway', sans-serif; background: var(--bg); color: var(--primary); margin: 0; padding: 20px; line-height: 1.5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 1px solid var(--silver); padding-bottom: 20px; }
+        .header p { color: var(--silver); }
+        .main-grid { display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .card h2 { font-size: 1.1rem; margin-top: 0; border-bottom: 1px solid #b2ab9e9f; padding-bottom: 10px; display: flex; justify-content: space-between; }
+
+        .input-group { margin-bottom: 12px; width: 100%; }
+        label { display: block; font-size: 0.8rem; font-weight: 600; color: #b2ab9e; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #b2ab9e; border-radius: 6px; font-size: 0.9rem; font-family: Raleway, sans-serif; box-sizing: border-box; }
+        input { text-align: right; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px; }
+        th { text-align: left; color: var(--silver); font-weight: 600; padding: 8px; border-bottom: 2px solid #b2ab9e1f; }
+        td { padding: 8px; border-bottom: 1px solid #b2ab9e1f; text-align: right; }
+        td:first-child { text-align: left; }
+        .val-bold { font-weight: 700; color: var(--accent); }
+
+        .charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .chart-box { height: 300px; position: relative; }
+
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: var(--accent); color: white; padding: 15px; border-radius: 10px; text-align: center; }
+        .stat-card.secondary { background: var(--primary); }
+        .stat-card div:first-child { font-size: 0.8rem; opacity: 0.9; }
+        .stat-card div:last-child { font-size: 1.2rem; font-weight: bold; }
+        .stat-card:last-child { background: var(--gold); }
+        .card hr { border: none; border-top: 1px solid #b2ab9e9f; background-color: transparent;}
+
+        .hidden { display: none !important; }
+
+        @media print {
+            .no-print { display: none; } 
+            .main-grid { grid-template-columns: 1fr; }
+            .stat-card { background-color: white; color: var(--primary); }
+            .card {box-shadow: none;} }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Golden Gate</h1>
+        <p>Komplexní řešení vašich investic</p>
+    </div>
+
+    <div class="main-grid">
+        <div class="sidebar no-print">
+            <div class="card">
+                <h2>Základní vstupy</h2>
+                <div class="input-group">
+                    <label>Jednorázová investice (Kč)</label>
+                    <input type="number" id="totalInit" value="500000" step="1000">
+                </div>
+                <div class="input-group">
+                    <label>Měsíční úložka celkem (Kč)</label>
+                    <input type="number" id="totalMonthly" value="5000" step="500">
+                </div>
+                <div class="input-group">
+                    <label>Horizont (roky)</label>
+                    <input type="number" id="years" value="20" step="1">
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Rozdělení portfolia (%)</h2>
+                <div class="input-group"><label>Permanentní fond (%)</label><input type="number" id="pctPF" value="60" step="1"></div>
+                <div class="input-group"><label>Komoditní účet (%)</label><input type="number" id="pctCom" value="30" step="1"></div>
+                <div class="input-group"><label>Bitcoinový účet (%)</label><input type="number" id="pctBTC" value="10" step="1"></div>
+            </div>
+
+            <div class="card" id="cardTargets">
+                <h2>Cílové částky</h2>
+                <div class="input-group" id="containerTargetPF"><label>Permanentní fond (Kč)</label><input type="number" id="targetPF" value="1000000" step="10000"></div>
+                <div class="input-group" id="containerTargetCom"><label>Komoditní účet (Kč)</label><input type="number" id="targetCom" value="500000" step="10000"></div>
+                <div class="input-group" id="containerTargetBTC"><label>Bitcoinový účet (Kč)</label><input type="number" id="targetBTC" value="100000" step="10000"></div>
+            </div>
+
+            <div class="card" id="cardComParams">
+                <h2>Parametry komoditního účtu</h2>
+                <div class="input-group">
+                    <label>Zlato (varianta)</label>
+                    <select id="variantGold">
+                        <option value="gold_1oz">1 oz slitek</option>
+                        <option value="gold_50g">50 g slitek</option>
+                        <option value="gold_14oz">1/4 oz mince</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Stříbro (varianta)</label>
+                    <select id="variantSilver">
+                        <option value="silver_1kg">1 kg slitek</option>
+                        <option value="silver_10oz">10 oz slitek</option>
+                    </select>
+                </div>
+                <hr>
+                <div class="input-group"><label>Poměr zlata (ku stříbru v %)</label><input type="number" id="pctGold" value="60" step="1"></div>
+            </div>
+            
+            <button onclick="window.print()" style="width:100%; padding:12px; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-family: Raleway, sans-serif;">Exportovat modelaci</button>
+        </div>
+
+        <div class="content">
+            <div class="summary-grid">
+                <div class="stat-card secondary"><div>Celkem investováno</div><div id="resInvested">0 Kč</div></div>
+                <div class="stat-card" style="background:var(--success)"><div>Budoucí hodnota</div><div id="resFinal">0 Kč</div></div>
+                <div class="stat-card"><div>Čistý zisk</div><div id="resProfit">0 Kč</div></div>
+                <div class="stat-card"><div>Celkový výnos / p.a.</div><div id="resYield">0 % / 0 %</div></div>
+            </div>
+
+            <div class="charts-container">
+                <div class="card">
+                    <h2>Struktura portfolia</h2>
+                    <div class="chart-box"><canvas id="pieChart"></canvas></div>
+                </div>
+                <div class="card">
+                    <h2>Vývoj investice v čase</h2>
+                    <div class="chart-box"><canvas id="lineChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="card" id="cardLumpSum">
+                <h2>Modelace jednorázové investice</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produkt</th>
+                            <th>Investice</th>
+                            <th>Poplatek (%)</th>
+                            <th>Poplatek (Kč)</th>
+                            <th>Spread (%)</th>
+                            <th>Okamžitá hodnota</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lumpSumTable"></tbody>
+                </table>
+            </div>
+
+            <div class="card" id="cardRegular">
+                <h2>Modelace pravidelné investice</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produkt</th>
+                            <th>Měsíční vklad</th>
+                            <th>Spread (%)</th>
+                            <th>Okamžitá hodnota</th>
+                        </tr>
+                    </thead>
+                    <tbody id="regularTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    Chart.defaults.font.family = "'Raleway', sans-serif";
+    Chart.defaults.color = '#45403a';
+
+    const ASSET_BASE = {
+        pf: { yield: 0.0790, feeRate: 0, spread: 0, name: 'Permanentní fond' },
+        gold_14oz: { yield: 0.1132, feeRate: 0, spread: 0.076, name: 'Zlato' },
+        gold_1oz: { yield: 0.1132, feeRate: 0, spread: 0.076, name: 'Zlato' },
+        gold_50g: { yield: 0.1132, feeRate: 0, spread: 0.078, name: 'Zlato' },
+        silver_1kg: { yield: 0.0975, feeRate: 0, spread: 0.336, name: 'Stříbro' },
+        silver_10oz: { yield: 0.0975, feeRate: 0, spread: 0.433, name: 'Stříbro' },
+        btc: { yield: 0.1898, feeRate: 0, spread: 0.0800, name: 'Bitcoin' }
+    };
+
+    let pieChart, lineChart;
+
+    function formatCZK(val) {
+        return new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', maximumFractionDigits: 0 }).format(val);
+    }
+
+    function toggleVisibility(pPF, pCom, pBTC) {
+        // Kontrola vstupů pro cílové částky
+        document.getElementById('containerTargetPF').classList.toggle('hidden', pPF <= 0);
+        document.getElementById('containerTargetCom').classList.toggle('hidden', pCom <= 0);
+        document.getElementById('containerTargetBTC').classList.toggle('hidden', pBTC <= 0);
+        
+        // Celá sekce pro cílové částky zmizí, pokud je vše 0
+        document.getElementById('cardTargets').classList.toggle('hidden', (pPF + pCom + pBTC) <= 0);
+
+        // Parametry komoditního účtu
+        document.getElementById('cardComParams').classList.toggle('hidden', pCom <= 0);
+
+        // Tabulky v obsahu - pokud produkt není v portfoliu, tabulka se může skrýt (volitelné)
+        // Nechal jsem je viditelné, dokud je v nich aspoň jeden řádek (řeší calculate)
+    }
+
+    function calculate() {
+        const totalInit = parseFloat(document.getElementById('totalInit').value) || 0;
+        const totalMonthly = parseFloat(document.getElementById('totalMonthly').value) || 0;
+        const years = parseFloat(document.getElementById('years').value) || 0;
+
+        const vGold = document.getElementById('variantGold').value;
+        const vSilver = document.getElementById('variantSilver').value;
+
+        const pPF = (parseFloat(document.getElementById('pctPF').value) || 0) / 100;
+        const pCom = (parseFloat(document.getElementById('pctCom').value) || 0) / 100;
+        const pBTC = (parseFloat(document.getElementById('pctBTC').value) || 0) / 100;
+        const pGoldInCom = (parseFloat(document.getElementById('pctGold').value) || 0) / 100;
+
+        // Volání viditelnosti
+        toggleVisibility(pPF, pCom, pBTC);
+
+        const weights = { pf: pPF, gold: pCom * pGoldInCom, silver: pCom * (1 - pGoldInCom), btc: pBTC };
+        
+        const currentAssets = {
+            pf: {...ASSET_BASE.pf},
+            gold: {...ASSET_BASE[vGold]},
+            silver: {...ASSET_BASE[vSilver]},
+            btc: {...ASSET_BASE.btc}
+        };
+
+        const targets = {
+            pf: parseFloat(document.getElementById('targetPF').value) || 0,
+            gold: (parseFloat(document.getElementById('targetCom').value) || 0) * pGoldInCom,
+            silver: (parseFloat(document.getElementById('targetCom').value) || 0) * (1 - pGoldInCom),
+            btc: parseFloat(document.getElementById('targetBTC').value) || 0
+        };
+
+        // Fee logika
+        if (targets.pf >= 5000000) currentAssets.pf.feeRate = 0.02;
+        else if (targets.pf >= 1000000) currentAssets.pf.feeRate = 0.03;
+        else currentAssets.pf.feeRate = 0.04;
+
+        if (targets.gold + targets.silver >= 1000000) {
+            currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.03;
+        } else if (targets.gold + targets.silver >= 700000) {
+            currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.04;
+        } else {
+            currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.05;
+        }
+
+        if (targets.btc >= 1000000) currentAssets.btc.feeRate = 0.015;
+        else if (targets.btc >= 500000) currentAssets.btc.feeRate = 0.02;
+        else currentAssets.btc.feeRate = 0.03;
+
+        let lumpHtml = '';
+        let regHtml = '';
+        let labels = [];
+        let chartDataValue = Array(years + 1).fill(0);
+        let chartDataInvested = Array(years + 1).fill(0);
+
+        for(let y=0; y<=years; y++) {
+            labels.push(`${y}. rok`);
+            chartDataInvested[y] = totalInit + (totalMonthly * 12 * y);
+        }
+
+        Object.keys(weights).forEach(key => {
+            const w = weights[key];
+            if(w <= 0) return;
+
+            const asset = currentAssets[key];
+            const initInv = totalInit * w;
+            const monthInv = totalMonthly * w;
+            const fee = targets[key] * asset.feeRate;
+            const startVal = Math.max(0, (initInv - fee) * (1 - asset.spread));
+            const afterSpreadMonth = monthInv * (1 - asset.spread);
+
+            lumpHtml += `<tr><td>${asset.name}</td><td>${formatCZK(initInv)}</td><td>${(asset.feeRate*100).toFixed(1)}%</td><td>${formatCZK(fee)}</td><td>${(asset.spread*100).toFixed(1)}%</td><td class="val-bold">${formatCZK(startVal)}</td></tr>`;
+            regHtml += `<tr><td>${asset.name}</td><td>${formatCZK(monthInv)}</td><td>${(asset.spread*100).toFixed(1)}%</td><td class="val-bold">${formatCZK(afterSpreadMonth)}</td></tr>`;
+
+            let currentVal = startVal;
+            chartDataValue[0] += currentVal;
+            for(let y=1; y<=years; y++) {
+                const r = asset.yield;
+                const m = afterSpreadMonth;
+                currentVal = (currentVal * (1 + r)) + (m * ((Math.pow(1 + r/12, 12) - 1) / (r/12)));
+                chartDataValue[y] += currentVal;
+            }
+        });
+
+        document.getElementById('lumpSumTable').innerHTML = lumpHtml;
+        document.getElementById('regularTable').innerHTML = regHtml;
+        
+        const finalVal = chartDataValue[years];
+        const totalInvested = chartDataInvested[years];
+        const totalProfit = finalVal - totalInvested;
+
+        document.getElementById('resInvested').innerText = formatCZK(totalInvested);
+        document.getElementById('resFinal').innerText = formatCZK(finalVal);
+        document.getElementById('resProfit').innerText = formatCZK(totalProfit);
+        
+        if (totalInvested > 0 && years > 0) {
+            const totalYieldPct = (totalProfit / totalInvested) * 100;
+            const paYield = (Math.pow(finalVal / totalInvested, 1/years) - 1) * 100;
+            document.getElementById('resYield').innerText = `${totalYieldPct.toFixed(1)} % / ${paYield.toFixed(2)} % p.a.`;
+        } else {
+            document.getElementById('resYield').innerText = "0 % / 0 %";
+        }
+
+        updateCharts(weights, labels, chartDataValue, chartDataInvested);
+    }
+
+    function updateCharts(weights, labels, dataVal, dataInv) {
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        if(pieChart) pieChart.destroy();
+        pieChart = new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['PF', 'Zlato', 'Stříbro', 'BTC'],
+                datasets: [{
+                    data: [weights.pf, weights.gold, weights.silver, weights.btc],
+                    backgroundColor: ['#6d9f88', '#edc079', '#b2ab9e', '#ffa23c'],
+                    borderWidth: 0
+                }]
+            },
+            options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        const lineCtx = document.getElementById('lineChart').getContext('2d');
+        if(lineChart) lineChart.destroy();
+        lineChart = new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Celková hodnota', data: dataVal, borderColor: '#6d9f88', backgroundColor: '#6d9f883f', fill: 1, tension: 0.3 },
+                    { label: 'Investované prostředky', data: dataInv, borderColor: '#45403a', fill: false }
+                ]
+            },
+            options: { 
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { ticks: { callback: value => formatCZK(value)}}}
+            }
+        });
+    }
+
+    document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
+    window.onload = calculate;
+</script>
+
+</body>
+</html>
