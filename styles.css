@@ -45,6 +45,13 @@ body {
     text-align: center;
     margin-bottom: 10px;
 }
+.title h1 {
+    font-size: 1.5rem;
+    display: none;
+}
+.title h1.selected {
+    display: block;
+}
 
 nav {
     width: 100%;

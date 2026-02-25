@@ -23,13 +23,13 @@
         </div>
         <nav class="no-print">
             <button class="nav-button">Kompletní řešení</button>
-            <button class="nav-button">Penzijko</button>
-            <button class="nav-button">Stavebko</button>
+            <button class="nav-button">DPS/PP</button>
+            <button class="nav-button">Stavební spoření</button>
         </nav>
         <div class="title only-print">
-            <h2>Modelace kompletního řešení</h2>
-            <h2>Srovnání penzijka a DIP</h2>
-            <h2>Srovnání stavebního spoření a permanentního fondu</h2>
+            <h1>Modelace kompletního řešení</h1>
+            <h1>Srovnání penzijka a DIP</h1>
+            <h1>Srovnání stavebního spoření a permanentního fondu</h1>
         </div>
         <div class="main-grid" id="complete-solution">
             <div class="sidebar no-print">
@@ -207,7 +207,7 @@
                     </div>
                 </div>
                 <div class="card" id="pensionInfo">
-                    <h2>Zrušení penzijka</h2>
+                    <h2>Zrušení DPS/PP</h2>
                     <div class="tables-container">
                         <table>
                             <thead>
@@ -245,7 +245,7 @@
             </div>
         </div>
         <div class="main-grid" id="building-savings-comparison">
-            <div class="sidebar">
+            <div class="sidebar no-print">
                 <div class="card">
                     <h2>Základní vstupy</h2>
                     <div class="input-group">
@@ -287,17 +287,26 @@
                         <input type="number" id="buildingTargetPF" value="500000" step="10000">
                     </div>
                 </div>
+                <button class="print-button" onclick="window.print()">Exportovat srovnání</button>
             </div>
             <div class="content">
                 <div class="summary-grid">
-                    <div class="stat-card" style="background-color: var(--primary);"><div>Budoucí hodnota (aktuální řešení)</div><div id="buildingOldStrategy">0 Kč</div></div>
-                    <div class="stat-card" style="background:var(--success)"><div>Budoucí hodnota (nové řešení)</div><div id="buildingNewStrategy">0 Kč</div></div>
-                    <div class="stat-card" style="background-color: var(--accent);"><div>Rozdíl</div><div id="buildingStrategyDifference">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--primary);"><div>Celkem investováno</div><div id="buildingTotalInvestment">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--success);"><div>Budoucí hodnota (aktuální řešení)</div><div id="buildingOldStrategy">0 Kč</div></div>
+                    <div class="stat-card" style="background:var(--accent)"><div>Budoucí hodnota (nové řešení)</div><div id="buildingNewStrategy">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--gold);"><div>Rozdíl</div><div id="buildingStrategyDifference">0 Kč</div></div>
                 </div>
                 <div class="comparison-container">
                     <div class="card" id="buildingComparison">
                         <h2>Srovnání</h2>
                         <table>
+                            <thead>
+                                <tr>
+                                    <th>Parametr</th>
+                                    <th>Aktuální řešení</th>
+                                    <th>Nové řešení</th>
+                                </tr>
+                            </thead>
                             <tbody id="buildingComparisonTable"></tbody>
                         </table>
                     </div>
@@ -307,7 +316,7 @@
                     </div>
                 </div>
                 <div class="card" id="buildingInfo">
-                    <h2>Zrušení stavebka</h2>
+                    <h2>Zrušení stvebního spoření</h2>
                     <div class="tables-container">
                         <table>
                             <thead>

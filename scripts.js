@@ -15,7 +15,7 @@ const ASSET_BASE = {
 
 const navButtons = document.querySelectorAll('.nav-button');
 const mainGrids = document.querySelectorAll('.main-grid');
-const sectionTitles = document.querySelectorAll('.title h2');
+const sectionTitles = document.querySelectorAll('.title h1');
 
 navButtons.forEach((button, index) => {
     button.addEventListener('click', () => {
@@ -37,17 +37,12 @@ function formatCZK(val) {
 }
 
 function toggleVisibility(pPF, pCom, pBTC) {
-    // Kontrola vstupů pro cílové částky
     document.getElementById('containerTargetPF').classList.toggle('hidden', pPF <= 0);
     document.getElementById('containerTargetCom').classList.toggle('hidden', pCom <= 0);
     document.getElementById('containerTargetBTC').classList.toggle('hidden', pBTC <= 0);
     
-    // Celá sekce pro cílové částky zmizí, pokud je vše 0
     document.getElementById('cardTargets').classList.toggle('hidden', (pPF + pCom + pBTC) <= 0);
-    // Parametry komoditního účtu
     document.getElementById('cardComParams').classList.toggle('hidden', pCom <= 0);
-    // Tabulky v obsahu - pokud produkt není v portfoliu, tabulka se může skrýt (volitelné)
-    // Nechal jsem je viditelné, dokud je v nich aspoň jeden řádek (řeší calculate)
 }
 
 function calculate() {
@@ -60,7 +55,6 @@ function calculate() {
     const pCom = (parseFloat(document.getElementById('pctCom').value) || 0) / 100;
     const pBTC = (parseFloat(document.getElementById('pctBTC').value) || 0) / 100;
     const pGoldInCom = (parseFloat(document.getElementById('pctGold').value) || 0) / 100;
-    // Volání viditelnosti
     toggleVisibility(pPF, pCom, pBTC);
     const weights = { pf: pPF, gold: pCom * pGoldInCom, silver: pCom * (1 - pGoldInCom), btc: pBTC };
     
@@ -113,8 +107,8 @@ function calculate() {
         const startVal = Math.max(0, (initInv - fee) * (1 - asset.spread));
         const afterSpreadMonth = monthInv * (1 - asset.spread);
     
-        lumpHtml += `<tr><td>${asset.name}</td><td>${formatCZK(initInv)}</td><td>${(asset.feeRate*100).toFixed(1)}%</td><td>${formatCZK(fee)}</td><td>${(asset.spread*100).toFixed(1)}%</td><td class="val-bold">${formatCZK(startVal)}</td></tr>`;
-        regHtml += `<tr><td>${asset.name}</td><td>${formatCZK(monthInv)}</td><td>${(asset.spread*100).toFixed(1)}%</td><td class="val-bold">${formatCZK(afterSpreadMonth)}</td></tr>`;
+        lumpHtml += `<tr><td>${asset.name}</td><td>${formatCZK(initInv)}</td><td>${(asset.feeRate*100).toFixed(1)} %</td><td>${formatCZK(fee)}</td><td>${(asset.spread*100).toFixed(1)} %</td><td class="val-bold">${formatCZK(startVal)}</td></tr>`;
+        regHtml += `<tr><td>${asset.name}</td><td>${formatCZK(monthInv)}</td><td>${(asset.spread*100).toFixed(1)} %</td><td class="val-bold">${formatCZK(afterSpreadMonth)}</td></tr>`;
         let currentVal = startVal;
         chartDataValue[0] += currentVal;
      
@@ -292,7 +286,7 @@ function calculatePensionComparison() {
         <tr><td>Měsíční vklad zaměstnavatele</td><td>${formatCZK(monthlyEmployer)}</td><td>${formatCZK(monthlyEmployer)}</td></tr>
         <tr><td>Měsíční státní podpora</td><td>${formatCZK(monthlyState)}</td><td>0 Kč</td></tr>
         <tr><td><strong>Celkem</strong></td><td class="val-bold">${formatCZK(monthlyTotal)}</td><td class="val-bold">${formatCZK(pfMonthlyTotal)}</td></tr>
-        <tr><td>Výnosnost</td><td>${(yieldPA * 100).toFixed(2)}% p.a.</td><td>${(pfYield *100).toFixed(2)}% p.a.</td></tr>
+        <tr><td>Výnosnost</td><td>${(yieldPA * 100).toFixed(2)} % p.a.</td><td>${(pfYield *100).toFixed(2)} % p.a.</td></tr>
         <tr><td><strong>Počáteční investice</strong></td><td class="val-bold">${formatCZK(pensionVal)}</td><td class="val-bold">${formatCZK(pfInitialInvestment)}</td></tr>
     `;
 
@@ -314,8 +308,8 @@ function calculatePensionComparison() {
     document.getElementById('pensionYieldTable').innerHTML = `
         <tr><td>Výnosy před zdaněním</td><td>${formatCZK(yieldsBeforeTax)}</td></tr>
         <tr><td>Zdanění (15%)</td><td>${formatCZK(yieldsBeforeTax * TAX)}</td></tr>
-        <tr><td>Výnosy po zdanění</td><td class="val-bold">${formatCZK(yieldsAfterTax)}</td></tr>
-        <tr><td>Výnosnost (p.a.)</td><td>${(yieldPA * 100).toFixed(2)} %</td></tr>
+        <tr><td>Výnosy po zdanění</td><td>${formatCZK(yieldsAfterTax)}</td></tr>
+        <tr><td>Výnosnost</td><td class="val-bold">${(yieldPA * 100).toFixed(2)} % p.a.</td></tr>
     `;
 
     document.getElementById('pensionFinalReturn').innerHTML = `
@@ -403,4 +397,177 @@ document.querySelectorAll(
 
 calculatePensionComparison();
 
-//BUILDING SAVINGS COMPARISON
+// BUILDING SAVINGS COMPARISON
+
+let buildingLineChart;
+
+function calculateBuildingSavingsComparison() {
+
+    const buildingsVal = parseFloat(document.getElementById('buildingsVal').value) || 0;
+    const buildingsLength = parseFloat(document.getElementById('buildingsLength').value) || 0;
+    const buildingsTarget = parseFloat(document.getElementById('buildingsTarget').value) || 0;
+
+    const clientDeposit = parseFloat(document.getElementById('buildingClientDeposit').value) || 0;
+    const stateDeposit = parseFloat(document.getElementById('buildingStateDeposit').value) || 0;
+
+    const monthlyClient = parseFloat(document.getElementById('buildingMonthlyClientDeposit').value) || 0;
+    const years = parseFloat(document.getElementById('buildingYears').value) || 0;
+    const targetPF = parseFloat(document.getElementById('buildingTargetPF').value) || 0;
+
+    const penalty = buildingsTarget * 0.01;
+
+    const returnedAmount = Math.max(0, buildingsVal - penalty - stateDeposit);
+
+    const yields = buildingsVal - clientDeposit - stateDeposit;
+
+    const monthlyState = Math.min(0.05 * monthlyClient, 1000 / 12);
+
+    const monthlyTotal = monthlyClient + monthlyState;
+
+    const totalDeposits = clientDeposit + stateDeposit;
+
+    const yieldPA =
+        buildingsLength > 0 && totalDeposits > 0
+            ? Math.pow(buildingsVal / totalDeposits, 1 / buildingsLength) - 1
+            : 0;
+
+    let pfFeeRate = 0.04;
+    if (targetPF >= 5000000) pfFeeRate = 0.02;
+    else if (targetPF >= 1000000) pfFeeRate = 0.03;
+
+    const entryFee = targetPF * pfFeeRate;
+    const pfInitialInvestment = Math.max(0, returnedAmount - entryFee);
+
+    const pfYield = ASSET_BASE.pf.yield;
+
+    function futureValue(initial, monthly, r, years) {
+        let value = initial;
+
+        for (let y = 1; y <= years; y++) {
+            value =
+                value * (1 + r) +
+                monthly * 12 *
+                ((Math.pow(1 + r / 12, 12) - 1) / (r / 12));
+        }
+
+        return value;
+    }
+
+    const oldFuture = futureValue(buildingsVal, monthlyTotal, yieldPA, years);
+    const newFuture = futureValue(pfInitialInvestment, monthlyClient, pfYield, years);
+
+    const difference = newFuture - oldFuture;
+
+    const totalInvestment = buildingsVal + monthlyClient * 12 * years;
+
+    document.getElementById('buildingTotalInvestment').innerText = formatCZK(totalInvestment);
+    document.getElementById('buildingOldStrategy').innerText = formatCZK(oldFuture);
+    document.getElementById('buildingNewStrategy').innerText = formatCZK(newFuture);
+    document.getElementById('buildingStrategyDifference').innerText = formatCZK(difference);
+
+    document.getElementById('buildingComparisonTable').innerHTML = `
+        <tr><td>Měsíční vklad klienta</td><td>${formatCZK(monthlyClient)}</td><td>${formatCZK(monthlyClient)}</td></tr>
+        <tr><td>Měsíční státní podpora</td><td>${formatCZK(monthlyState)}</td><td>0 Kč</td></tr>
+        <tr><td><strong>Celkem</strong></td><td class="val-bold">${formatCZK(monthlyTotal)}</td><td class="val-bold">${formatCZK(monthlyClient)}</td></tr>
+        <tr><td>Výnosnost</td><td>${(yieldPA * 100).toFixed(2)} % p.a.</td><td>${(pfYield * 100).toFixed(2)} % p.a.</td></tr>
+        <tr><td><strong>Počáteční investice</strong></td>
+        <td class="val-bold">${formatCZK(buildingsVal)}</td>
+        <td class="val-bold">${formatCZK(pfInitialInvestment)}</td></tr>
+    `;
+
+    document.getElementById('buildingClientInfoTable').innerHTML = `
+        <tr><td>Cílová částka</td><td>${formatCZK(buildingsTarget)}</td></tr>
+        <tr><td>Smluvní pokuta (1%)</td><td>${formatCZK(penalty)}</td></tr>
+        <tr><td>Státní podpora</td><td>${formatCZK(stateDeposit)}</td></tr>
+        <tr><td>Vráceno</td><td class="val-bold">${formatCZK(returnedAmount)}</td></tr>
+    `;
+
+    document.getElementById('buildingYieldTable').innerHTML = `
+        <tr><td>Celkové vklady</td><td>${formatCZK(clientDeposit + stateDeposit)}</td></tr>
+        <tr><td>Výnos</td><td>${formatCZK(yields)}</td></tr>
+        <tr><td>Výnosnost</td><td class="val-bold">${(yieldPA * 100).toFixed(2)} % p.a.</td></tr>
+    `;
+
+    document.getElementById('buildingFinalReturn').innerHTML = `
+        <tr><td><strong>Celkem k reinvestici</strong></td>
+        <td class="val-bold">${formatCZK(returnedAmount)}</td></tr>
+    `;
+
+    document.getElementById('pfInfoTable').innerHTML = `
+        <tr><td>Cílová částka</td><td>${formatCZK(targetPF)}</td></tr>
+        <tr><td>Vstupní poplatek (${(pfFeeRate * 100).toFixed(1)}%)</td><td>${formatCZK(entryFee)}</td></tr>
+        <tr><td>Jednorázová investice</td><td class="val-bold">${formatCZK(pfInitialInvestment)}</td></tr>
+    `;
+
+    const labels = [];
+    const oldData = [];
+    const newData = [];
+    const investedData = [];
+
+    for (let y = 0; y <= years; y++) {
+
+        labels.push(`${y}. rok`);
+
+        oldData.push(futureValue(buildingsVal, monthlyClient, yieldPA, y));
+        newData.push(futureValue(pfInitialInvestment, monthlyClient, pfYield, y));
+
+        const invested = pfInitialInvestment + monthlyClient * 12 * y;
+        investedData.push(invested);
+    }
+
+    const ctx = document.getElementById('buildingLineChart').getContext('2d');
+
+    if (buildingLineChart) buildingLineChart.destroy();
+
+    buildingLineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Nové řešení',
+                    data: newData,
+                    borderColor: '#6d9f88',
+                    backgroundColor: '#6d9f883f',
+                    tension: 0.1,
+                    borderWidth: 1,
+                    fill: 1
+                },
+                {
+                    label: 'Aktuální řešení',
+                    data: oldData,
+                    borderColor: '#cc331d',
+                    backgroundColor: '#cc331d5f',
+                    tension: 0.1,
+                    borderWidth: 1,
+                    fill: 2
+                },
+                {
+                    label: 'Celková investice',
+                    data: investedData,
+                    borderColor: '#45403a',
+                    tension: 0,
+                    borderWidth: 1,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: value => formatCZK(value)
+                    }
+                }
+            }
+        }
+    });
+}
+
+document.querySelectorAll(
+    '#building-savings-comparison input'
+).forEach(el => el.addEventListener('input', calculateBuildingSavingsComparison));
+
+calculateBuildingSavingsComparison();
