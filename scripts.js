@@ -170,7 +170,7 @@ function updateCharts(weights, labels, dataVal, dataInv) {
             labels: labels,
             datasets: [
                 { label: 'Celková hodnota', data: dataVal, borderColor: '#6d9f88', backgroundColor: '#6d9f883f', fill: 1, tension: 0.1, borderWidth: 1 },
-                { label: 'Investované prostředky', data: dataInv, borderColor: '#45403a', fill: false, tension: 0.1, borderWidth: 1 }
+                { label: 'Investované prostředky', data: dataInv, borderColor: '#45403a', backgroundColor: '#45403a61', fill: false, tension: 0.1, borderWidth: 1 }
             ]
         },
         options: { 
