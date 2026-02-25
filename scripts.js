@@ -1,0 +1,406 @@
+Chart.defaults.font.family = "'Raleway', sans-serif";
+Chart.defaults.color = '#45403a';
+
+const ASSET_BASE = {
+    pf: { yield: 0.0790, feeRate: 0, spread: 0, name: 'Permanentní fond' },
+    gold_14oz: { yield: 0.1132, feeRate: 0, spread: 0.076, name: 'Zlato' },
+    gold_1oz: { yield: 0.1132, feeRate: 0, spread: 0.076, name: 'Zlato' },
+    gold_50g: { yield: 0.1132, feeRate: 0, spread: 0.078, name: 'Zlato' },
+    silver_1kg: { yield: 0.0975, feeRate: 0, spread: 0.336, name: 'Stříbro' },
+    silver_10oz: { yield: 0.0975, feeRate: 0, spread: 0.433, name: 'Stříbro' },
+    btc: { yield: 0.1898, feeRate: 0, spread: 0.0800, name: 'Bitcoin' }
+};
+
+// SELECTION
+
+const navButtons = document.querySelectorAll('.nav-button');
+const mainGrids = document.querySelectorAll('.main-grid');
+const sectionTitles = document.querySelectorAll('.title h2');
+
+navButtons.forEach((button, index) => {
+    button.addEventListener('click', () => {
+        mainGrids.forEach(grid => grid.classList.remove('selected'));
+        mainGrids[index].classList.add('selected');
+        sectionTitles.forEach(title => title.style.display = 'none');
+        sectionTitles[index].style.display = 'block';
+        navButtons.forEach(btn => btn.classList.remove('selected'));
+        button.classList.add('selected');
+    });
+});
+
+// COMPLETE SOLUTION
+
+let pieChart, lineChart;
+
+function formatCZK(val) {
+    return new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', maximumFractionDigits: 0 }).format(val);
+}
+
+function toggleVisibility(pPF, pCom, pBTC) {
+    // Kontrola vstupů pro cílové částky
+    document.getElementById('containerTargetPF').classList.toggle('hidden', pPF <= 0);
+    document.getElementById('containerTargetCom').classList.toggle('hidden', pCom <= 0);
+    document.getElementById('containerTargetBTC').classList.toggle('hidden', pBTC <= 0);
+    
+    // Celá sekce pro cílové částky zmizí, pokud je vše 0
+    document.getElementById('cardTargets').classList.toggle('hidden', (pPF + pCom + pBTC) <= 0);
+    // Parametry komoditního účtu
+    document.getElementById('cardComParams').classList.toggle('hidden', pCom <= 0);
+    // Tabulky v obsahu - pokud produkt není v portfoliu, tabulka se může skrýt (volitelné)
+    // Nechal jsem je viditelné, dokud je v nich aspoň jeden řádek (řeší calculate)
+}
+
+function calculate() {
+    const totalInit = parseFloat(document.getElementById('totalInit').value) || 0;
+    const totalMonthly = parseFloat(document.getElementById('totalMonthly').value) || 0;
+    const years = parseFloat(document.getElementById('years').value) || 0;
+    const vGold = document.getElementById('variantGold').value;
+    const vSilver = document.getElementById('variantSilver').value;
+    const pPF = (parseFloat(document.getElementById('pctPF').value) || 0) / 100;
+    const pCom = (parseFloat(document.getElementById('pctCom').value) || 0) / 100;
+    const pBTC = (parseFloat(document.getElementById('pctBTC').value) || 0) / 100;
+    const pGoldInCom = (parseFloat(document.getElementById('pctGold').value) || 0) / 100;
+    // Volání viditelnosti
+    toggleVisibility(pPF, pCom, pBTC);
+    const weights = { pf: pPF, gold: pCom * pGoldInCom, silver: pCom * (1 - pGoldInCom), btc: pBTC };
+    
+    const currentAssets = {
+        pf: {...ASSET_BASE.pf},
+        gold: {...ASSET_BASE[vGold]},
+        silver: {...ASSET_BASE[vSilver]},
+        btc: {...ASSET_BASE.btc}
+    };
+    const targets = {
+        pf: parseFloat(document.getElementById('targetPF').value) || 0,
+        gold: (parseFloat(document.getElementById('targetCom').value) || 0) * pGoldInCom,
+        silver: (parseFloat(document.getElementById('targetCom').value) || 0) * (1 - pGoldInCom),
+        btc: parseFloat(document.getElementById('targetBTC').value) || 0
+    };
+
+
+    if (targets.pf >= 5000000) currentAssets.pf.feeRate = 0.02;
+    else if (targets.pf >= 1000000) currentAssets.pf.feeRate = 0.03;
+    else currentAssets.pf.feeRate = 0.04;
+    if (targets.gold + targets.silver >= 1000000) {
+        currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.03;
+    } else if (targets.gold + targets.silver >= 700000) {
+        currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.04;
+    } else {
+        currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.05;
+    }
+    if (targets.btc >= 1000000) currentAssets.btc.feeRate = 0.015;
+    else if (targets.btc >= 500000) currentAssets.btc.feeRate = 0.02;
+    else currentAssets.btc.feeRate = 0.03;
+    
+    let lumpHtml = '';
+    let regHtml = '';
+    let labels = [];
+    let chartDataValue = Array(years + 1).fill(0);
+    let chartDataInvested = Array(years + 1).fill(0);
+    
+    for(let y=0; y<=years; y++) {
+        labels.push(`${y}. rok`);
+        chartDataInvested[y] = totalInit + (totalMonthly * 12 * y);
+    }
+    
+    Object.keys(weights).forEach(key => {
+        const w = weights[key];
+        if(w <= 0) return;
+        const asset = currentAssets[key];
+        const initInv = totalInit * w;
+        const monthInv = totalMonthly * w;
+        const fee = targets[key] * asset.feeRate;
+        const startVal = Math.max(0, (initInv - fee) * (1 - asset.spread));
+        const afterSpreadMonth = monthInv * (1 - asset.spread);
+    
+        lumpHtml += `<tr><td>${asset.name}</td><td>${formatCZK(initInv)}</td><td>${(asset.feeRate*100).toFixed(1)}%</td><td>${formatCZK(fee)}</td><td>${(asset.spread*100).toFixed(1)}%</td><td class="val-bold">${formatCZK(startVal)}</td></tr>`;
+        regHtml += `<tr><td>${asset.name}</td><td>${formatCZK(monthInv)}</td><td>${(asset.spread*100).toFixed(1)}%</td><td class="val-bold">${formatCZK(afterSpreadMonth)}</td></tr>`;
+        let currentVal = startVal;
+        chartDataValue[0] += currentVal;
+     
+        for(let y=1; y<=years; y++) {
+            const r = asset.yield;
+            const m = afterSpreadMonth;
+            currentVal = (currentVal * (1 + r)) + (m * ((Math.pow(1 + r/12, 12) - 1) / (r/12)));
+            chartDataValue[y] += currentVal;
+        }
+    });
+    
+    document.getElementById('lumpSumTable').innerHTML = lumpHtml;
+    document.getElementById('regularTable').innerHTML = regHtml;
+    
+    const finalVal = chartDataValue[years];
+    const totalInvested = chartDataInvested[years];
+    const totalProfit = finalVal - totalInvested;
+    
+    document.getElementById('resInvested').innerText = formatCZK(totalInvested);
+    document.getElementById('resFinal').innerText = formatCZK(finalVal);
+    document.getElementById('resProfit').innerText = formatCZK(totalProfit);
+    
+    if (totalInvested > 0 && years > 0) {
+        const totalYieldPct = (totalProfit / totalInvested) * 100;
+        const paYield = (Math.pow(finalVal / totalInvested, 1/years) - 1) * 100;
+        document.getElementById('resYield').innerText = `${totalYieldPct.toFixed(1)} % / ${paYield.toFixed(2)} % p.a.`;
+    } else {
+        document.getElementById('resYield').innerText = "0 % / 0 %";
+    }
+    
+    updateCharts(weights, labels, chartDataValue, chartDataInvested);
+}
+
+function updateCharts(weights, labels, dataVal, dataInv) {
+    const pieCtx = document.getElementById('pieChart').getContext('2d');
+    
+    if(pieChart) pieChart.destroy();
+    
+    pieChart = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['PF', 'Zlato', 'Stříbro', 'BTC'],
+            datasets: [{
+                data: [weights.pf, weights.gold, weights.silver, weights.btc],
+                backgroundColor: ['#6d9f88', '#edc079', '#b2ab9e', '#ffa23c'],
+                borderWidth: 0
+            }]
+        },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+    
+    const lineCtx = document.getElementById('lineChart').getContext('2d');
+    
+    if(lineChart) lineChart.destroy();
+    
+    lineChart = new Chart(lineCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Celková hodnota', data: dataVal, borderColor: '#6d9f88', backgroundColor: '#6d9f883f', fill: 1, tension: 0.1, borderWidth: 1 },
+                { label: 'Investované prostředky', data: dataInv, borderColor: '#45403a', fill: false, tension: 0.1, borderWidth: 1 }
+            ]
+        },
+        options: { 
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } },
+            scales: { y: { ticks: { callback: value => formatCZK(value)}}}
+        }
+    });
+}
+
+document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
+window.onload = calculate;
+
+// PENSION COMPARISON
+
+let pensionLineChart;
+
+function calculatePensionComparison() {
+
+    const pensionVal = parseFloat(document.getElementById('pensionVal').value) || 0;
+    const pensionLength = parseFloat(document.getElementById('pensionLength').value) || 0;
+
+    const clientDeposit = parseFloat(document.getElementById('pensionClientDeposit').value) || 0;
+    const employerDeposit = parseFloat(document.getElementById('pensionEmployerDeposit').value) || 0;
+    const stateDeposit = parseFloat(document.getElementById('pensionStateDeposit').value) || 0;
+
+    const monthlyClient = parseFloat(document.getElementById('pensionMonthlyClientDeposit').value) || 0;
+    const monthlyEmployer = parseFloat(document.getElementById('pensionMonthlyEmployerDeposit').value) || 0;
+
+    const years = parseFloat(document.getElementById('pensionYears').value) || 0;
+    const targetPF = parseFloat(document.getElementById('pensionTargetPF').value) || 0;
+
+    const TAX = 0.15;
+
+    const yearlyClientDeposit = Math.round(clientDeposit / pensionLength)
+
+    let yearlyTaxDeduction = 0
+
+    if (yearlyClientDeposit >= 68400) {
+        yearlyTaxDeduction = 48000
+    } else if (yearlyClientDeposit >= 20400) {
+        yearlyTaxDeduction = yearlyClientDeposit - 20400
+    } else {
+        yearlyTaxDeduction = 0
+    }
+
+    const totalTaxDeductions = yearlyTaxDeduction * pensionLength
+    const totalTaxDeductionsTax = totalTaxDeductions * TAX
+    const returnedClientDeposit = clientDeposit - totalTaxDeductionsTax
+
+    const totalDeposits = clientDeposit + employerDeposit + stateDeposit;
+
+    const yieldsBeforeTax = pensionVal - totalDeposits;
+    const yieldsAfterTax = yieldsBeforeTax * (1 - TAX);
+
+    const employerAfterTax = employerDeposit * (1 - TAX);
+
+    const returnedAmount = returnedClientDeposit + employerAfterTax + yieldsAfterTax;
+
+    const yieldPA =
+        pensionLength > 0 && totalDeposits > 0
+            ? Math.pow(pensionVal / totalDeposits, 1 / pensionLength) - 1
+            : 0;
+
+    let pfFeeRate = 0.04;
+    if (targetPF >= 5000000) pfFeeRate = 0.02;
+    else if (targetPF >= 1000000) pfFeeRate = 0.03;
+
+    const entryFee = targetPF * pfFeeRate;
+    const pfInitialInvestment = Math.max(0, returnedAmount - entryFee);
+
+    const pfYield = ASSET_BASE.pf.yield;
+
+    let monthlyState = 0
+
+    if (monthlyClient >= 500 && monthlyClient <= 1700) {
+        monthlyState = monthlyClient * 0.2
+    } else if (monthlyClient > 1700) {
+        monthlyState = 340
+    } else {
+        monthlyState = 0
+    }
+
+    const monthlyTotal = monthlyClient + monthlyEmployer + monthlyState;
+
+    const pfMonthlyTotal = monthlyClient + monthlyEmployer;
+
+    function futureValue(initial, monthly, r, years) {
+        let value = initial;
+
+        for (let y = 1; y <= years; y++) {
+            value =
+                value * (1 + r) +
+                monthly * 12 *
+                ((Math.pow(1 + r / 12, 12) - 1) / (r / 12));
+        }
+
+        return value;
+    }
+
+    const oldFuture = futureValue(pensionVal, monthlyTotal, yieldPA, years);
+    const newFuture = futureValue(pfInitialInvestment, pfMonthlyTotal, pfYield, years);
+
+    const difference = newFuture - oldFuture;
+
+    document.getElementById('pensionOldStrategy').innerText = formatCZK(oldFuture);
+    document.getElementById('pensionNewStrategy').innerText = formatCZK(newFuture);
+    document.getElementById('pensionStrategyDifference').innerText = formatCZK(difference);
+    document.getElementById('pensionTotalInvestment').innerText = formatCZK(pensionVal + monthlyClient * 12 * years);
+
+    document.getElementById('pensionComparisonTable').innerHTML = `
+        <tr><td>Měsíční vklad klienta</td><td>${formatCZK(monthlyClient)}</td><td>${formatCZK(monthlyClient)}</td></tr>
+        <tr><td>Měsíční vklad zaměstnavatele</td><td>${formatCZK(monthlyEmployer)}</td><td>${formatCZK(monthlyEmployer)}</td></tr>
+        <tr><td>Měsíční státní podpora</td><td>${formatCZK(monthlyState)}</td><td>0 Kč</td></tr>
+        <tr><td><strong>Celkem</strong></td><td class="val-bold">${formatCZK(monthlyTotal)}</td><td class="val-bold">${formatCZK(pfMonthlyTotal)}</td></tr>
+        <tr><td>Výnosnost</td><td>${(yieldPA * 100).toFixed(2)}% p.a.</td><td>${(pfYield *100).toFixed(2)}% p.a.</td></tr>
+        <tr><td><strong>Počáteční investice</strong></td><td class="val-bold">${formatCZK(pensionVal)}</td><td class="val-bold">${formatCZK(pfInitialInvestment)}</td></tr>
+    `;
+
+    document.getElementById('pensionClientInfoTable').innerHTML = `
+        <tr><td>Vklady</td><td>${formatCZK(clientDeposit)}</td></tr>
+        <tr><td>Roční vklad</td><td>${formatCZK(yearlyClientDeposit)}</td></tr>
+        <tr><td>Roční daňový odvod</td><td>${formatCZK(yearlyTaxDeduction)}</td></tr>
+        <tr><td>Úhrn daňových odvodů</td><td>${formatCZK(totalTaxDeductions)}</td></tr>
+        <tr><td>Zdanění daňových odvodů</td><td>${formatCZK(totalTaxDeductionsTax)}</td></tr>
+        <tr><td>Vráceno</td><td class="val-bold">${formatCZK(returnedClientDeposit)}</td></tr>
+    `;
+
+    document.getElementById('pensionEmployerInfoTable').innerHTML = `
+        <tr><td>Vklady</td><td>${formatCZK(employerDeposit)}</td></tr>
+        <tr><td>Zdanění (15%)</td><td>${formatCZK(employerDeposit * TAX)}</td></tr>
+        <tr><td>Vráceno</td><td class="val-bold">${formatCZK(employerAfterTax)}</td></tr>
+    `;
+
+    document.getElementById('pensionYieldTable').innerHTML = `
+        <tr><td>Výnosy před zdaněním</td><td>${formatCZK(yieldsBeforeTax)}</td></tr>
+        <tr><td>Zdanění (15%)</td><td>${formatCZK(yieldsBeforeTax * TAX)}</td></tr>
+        <tr><td>Výnosy po zdanění</td><td class="val-bold">${formatCZK(yieldsAfterTax)}</td></tr>
+        <tr><td>Výnosnost (p.a.)</td><td>${(yieldPA * 100).toFixed(2)} %</td></tr>
+    `;
+
+    document.getElementById('pensionFinalReturn').innerHTML = `
+        <tr><td><strong>Celkem vráceno</strong></td>
+        <td class="val-bold">${formatCZK(returnedAmount)}</td></tr>
+    `;
+
+    document.getElementById('dipInfoTable').innerHTML = `
+        <tr><td>Cílová částka</td><td>${formatCZK(targetPF)}</td></tr>
+        <tr><td>Vstupní poplatek (${(pfFeeRate * 100).toFixed(1)}%)</td><td>${formatCZK(entryFee)}</td></tr>
+        <tr><td>Jednorázová investice</td><td class="val-bold">${formatCZK(pfInitialInvestment)}</td></tr>
+    `;
+
+    const labels = [];
+    const oldData = [];
+    const newData = [];
+    const investedData = [];
+
+    for (let y = 0; y <= years; y++) {
+        labels.push(`${y}. rok`);
+
+        oldData.push(futureValue(pensionVal, monthlyTotal, yieldPA, y));
+        newData.push(futureValue(pfInitialInvestment, monthlyTotal, pfYield, y));
+
+        investedAmount = pfInitialInvestment + pfMonthlyTotal * 12 * y;
+
+        investedData.push(investedAmount);
+    }
+
+    const ctx = document.getElementById('pensionLineChart').getContext('2d');
+
+    if (pensionLineChart) pensionLineChart.destroy();
+
+    pensionLineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Nové řešení',
+                    data: newData,
+                    borderColor: '#6d9f88',
+                    backgroundColor: '#6d9f883f',
+                    tension: 0.1,
+                    borderWidth: 1,
+                    fill: 1
+                },
+                {
+                    label: 'Aktuální řešení',
+                    data: oldData,
+                    borderColor: '#cc331d',
+                    backgroundColor: '#cc331d5f',
+                    tension: 0.1,
+                    borderWidth: 1,
+                    fill: 2
+                },
+                {
+                    label: 'Celková investice',
+                    data: investedData,
+                    borderColor: '#45403a',
+                    backgroundColor: '#45403a61',
+                    tension: 0,
+                    borderWidth: 1,
+                    fill: false
+                },
+            ]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: value => formatCZK(value)
+                    }
+                }
+            }
+        }
+    });
+}
+
+document.querySelectorAll(
+    '#pension-comparison input'
+).forEach(el => el.addEventListener('input', calculatePensionComparison));
+
+calculatePensionComparison();
+
+//BUILDING SAVINGS COMPARISON
