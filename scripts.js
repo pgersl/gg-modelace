@@ -150,7 +150,7 @@ function updateCharts(weights, labels, dataVal, dataInv) {
     pieChart = new Chart(pieCtx, {
         type: 'doughnut',
         data: {
-            labels: ['PF', 'Zlato', 'Stříbro', 'BTC'],
+            labels: ['Permanentní fond', 'Zlato', 'Stříbro', 'Bitcoin'],
             datasets: [{
                 data: [weights.pf, weights.gold, weights.silver, weights.btc],
                 backgroundColor: ['#6d9f88', '#edc079', '#b2ab9e', '#ffa23c'],
