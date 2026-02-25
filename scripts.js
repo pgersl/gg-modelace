@@ -546,6 +546,7 @@ function calculateBuildingSavingsComparison() {
                     label: 'Celková investice',
                     data: investedData,
                     borderColor: '#45403a',
+                    backgroundColor:'#45403a61',
                     tension: 0,
                     borderWidth: 1,
                     fill: false
