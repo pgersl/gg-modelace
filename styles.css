@@ -138,7 +138,7 @@ input {
     background: var(--primary);
     color: white;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
     font-family: Raleway, sans-serif;

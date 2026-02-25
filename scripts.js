@@ -571,3 +571,169 @@ document.querySelectorAll(
 ).forEach(el => el.addEventListener('input', calculateBuildingSavingsComparison));
 
 calculateBuildingSavingsComparison();
+
+// CLIENT CARE
+
+let carePortfolioChart;
+let careYieldChart;
+
+function calculateClientCare() {
+
+    const assets = [
+        {
+            name: 'Zlato',
+            invested: parseFloat(document.getElementById('totalInvestmentGold').value) || 0,
+            current: parseFloat(document.getElementById('currentValueGold').value) || 0
+        },
+        {
+            name: 'Stříbro',
+            invested: parseFloat(document.getElementById('totalInvestmentSilver').value) || 0,
+            current: parseFloat(document.getElementById('currentValueSilver').value) || 0
+        },
+        {
+            name: 'Bitcoin',
+            invested: parseFloat(document.getElementById('totalInvestmentBTC').value) || 0,
+            current: parseFloat(document.getElementById('currentValueBTC').value) || 0
+        },
+        {
+            name: 'Permanentní fond',
+            invested: parseFloat(document.getElementById('totalInvestmentPF').value) || 0,
+            current: parseFloat(document.getElementById('currentValuePF').value) || 0
+        }
+    ];
+
+    let totalInvestment = 0;
+    let totalCurrent = 0;
+
+    assets.forEach(asset => {
+        totalInvestment += asset.invested;
+        totalCurrent += asset.current;
+
+        asset.profit = asset.current - asset.invested;
+        asset.yield = asset.invested > 0
+            ? asset.profit / asset.invested
+            : 0;
+    });
+
+    const totalProfit = totalCurrent - totalInvestment;
+    const totalYield = totalInvestment > 0
+        ? totalProfit / totalInvestment
+        : 0;
+
+    document.getElementById('careTotalInvestment').innerText = formatCZK(totalInvestment);
+    document.getElementById('careCurrentValue').innerText = formatCZK(totalCurrent);
+    document.getElementById('careProfit').innerText = formatCZK(totalProfit);
+    document.getElementById('careYield').innerText = (totalYield * 100).toFixed(1) + ' %';
+
+    const tableBody = document.getElementById('careTable');
+    tableBody.innerHTML = '';
+
+    assets.forEach(asset => {
+
+        const yieldPercent = (asset.yield * 100).toFixed(1);
+
+        tableBody.innerHTML += `
+            <tr>
+                <td>${asset.name}</td>
+                <td>${formatCZK(asset.invested)}</td>
+                <td>${formatCZK(asset.current)}</td>
+                <td style="color:${asset.yield >= 0 ? 'var(--accent)' : 'var(--success)'}">
+                    ${yieldPercent} %
+                </td>
+            </tr>
+        `;
+    });
+
+    const portfolioCtx = document.getElementById('carePortfolioChart').getContext('2d');
+
+    if (carePortfolioChart) carePortfolioChart.destroy();
+
+    carePortfolioChart = new Chart(portfolioCtx, {
+        type: 'doughnut',
+        data: {
+            labels: assets.map(a => a.name),
+            datasets: [{
+                data: assets.map(a => a.current),
+                backgroundColor: [
+                    '#edc079',
+                    '#b2ab9e',
+                    '#ffa23c',
+                    '#6d9f88'  
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    const yieldCtx = document.getElementById('careYieldChart').getContext('2d');
+
+    if (careYieldChart) careYieldChart.destroy();
+
+    const wrappedLabels = assets.map(a => {
+        if (a.name === 'Permanentní fond') {
+            return ['Permanentní', 'fond'];
+        }
+        return a.name;
+    });
+
+    careYieldChart = new Chart(yieldCtx, {
+        type: 'bar',
+        data: {
+            labels: wrappedLabels,
+            datasets: [{
+                label: 'Zhodnocení (%)',
+                data: assets.map(a => a.yield * 100),
+                backgroundColor: assets.map(a =>
+                    a.yield >= 0 ? '#6d9f88' : '#cc331d'
+                )
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        minRotation: 0,
+                        maxRotation: 0,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                y: {
+                    ticks: {
+                        callback: value => value + ' %'
+                    },
+                    grid: {
+                        color: function(context) {
+                            if (context.tick.value === 0) {
+                                return '#000000';
+                            }
+                            return '#e0e0e0';
+                        },
+                        lineWidth: function(context) {
+                            if (context.tick.value === 0) {
+                                return 2;
+                            }
+                            return 1;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+document.querySelectorAll('#client-care input')
+    .forEach(el => el.addEventListener('input', calculateClientCare));
+
+calculateClientCare();

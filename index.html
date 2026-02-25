@@ -25,11 +25,13 @@
             <button class="nav-button">Kompletní řešení</button>
             <button class="nav-button">DPS/PP</button>
             <button class="nav-button">Stavební spoření</button>
+            <button class="nav-button">Péče</button>
         </nav>
         <div class="title only-print">
             <h1>Modelace kompletního řešení</h1>
             <h1>Srovnání penzijka a DIP</h1>
             <h1>Srovnání stavebního spoření a permanentního fondu</h1>
+            <h1>Shrnutí vašeho protfolia</h1>
         </div>
         <div class="main-grid" id="complete-solution">
             <div class="sidebar no-print">
@@ -341,6 +343,87 @@
                     <h2>Založení permanentního fondu</h2>
                     <table>
                         <tbody id="pfInfoTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="main-grid" id="client-care">
+            <div class="sidebar no-print">
+                <div class="card">
+                    <h2>Vstupy: Zlato</h2>
+                    <div class="input-group">
+                        <label>Celková investice (Kč)</label>
+                        <input type="number" id="totalInvestmentGold" value="180000" step="1000">
+                    </div>
+                    <div class="input-group">
+                        <label>Aktuální hodnota (Kč)</label>
+                        <input type="number" id="currentValueGold" value="313200" step="1000">
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Vstupy: Stříbro</h2>
+                    <div class="input-group">
+                        <label>Celková investice (Kč)</label>
+                        <input type="number" id="totalInvestmentSilver" value="120000" step="1000">
+                    </div>
+                    <div class="input-group">
+                        <label>Aktuální hodnota (Kč)</label>
+                        <input type="number" id="currentValueSilver" value="292800" step="1000">
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Vstupy: BTC</h2>
+                    <div class="input-group">
+                        <label>Celková investice (Kč)</label>
+                        <input type="number" id="totalInvestmentBTC" value="100000" step="1000">
+                    </div>
+                    <div class="input-group">
+                        <label>Aktuální hodnota (Kč)</label>
+                        <input type="number" id="currentValueBTC" value="67000" step="1000">
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Vstupy: Permanentní fond</h2>
+                    <div class="input-group">
+                        <label>Celková investice (Kč)</label>
+                        <input type="number" id="totalInvestmentPF" value="600000" step="1000">
+                    </div>
+                    <div class="input-group">
+                        <label>Aktuální hodnota (Kč)</label>
+                        <input type="number" id="currentValuePF" value="697200" step="1000">
+                    </div>
+                </div>
+                <button class="print-button" onclick="window.print()">Exportovat shrnutí</button>
+            </div>
+            <div class="content">
+                <div class="summary-grid">
+                    <div class="stat-card" style="background-color: var(--primary);"><div>Celkem investováno</div><div id="careTotalInvestment">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--success);"><div>Aktuální hodnota</div><div id="careCurrentValue">0 Kč</div></div>
+                    <div class="stat-card" style="background:var(--accent)"><div>Celkový výnos</div><div id="careProfit">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--gold);"><div>Celkový výnos (%)</div><div id="careYield">0 %</div></div>
+                </div>
+                <div class="charts-container">
+                    <div class="card">
+                        <h2>Aktuální rozložení portfolia</h2>
+                        <div class="chart-box"><canvas id="carePortfolioChart"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <h2>Zhodnocení jednotlivých aktiv</h2>
+                        <div class="chart-box"><canvas id="careYieldChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Přehled investic</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Aktivum</th>
+                                <th>Investované prostředky</th>
+                                <th>Aktuální hodnota</th>
+                                <th>Zhodnocení (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="careTable"></tbody>
                     </table>
                 </div>
             </div>
