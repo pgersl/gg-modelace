@@ -6,9 +6,9 @@ const ASSET_BASE = {
     gold_14oz: { yield: 0.1132, feeRate: 0, spread: 0.076, name: 'Zlato' },
     gold_1oz: { yield: 0.1132, feeRate: 0, spread: 0.076, name: 'Zlato' },
     gold_50g: { yield: 0.1132, feeRate: 0, spread: 0.078, name: 'Zlato' },
-    silver_1kg: { yield: 0.0975, feeRate: 0, spread: 0.336, name: 'Stříbro' },
-    silver_10oz: { yield: 0.0975, feeRate: 0, spread: 0.433, name: 'Stříbro' },
-    btc: { yield: 0.1898, feeRate: 0, spread: 0.0800, name: 'Bitcoin' }
+    silver_1kg: { yield: 0.1320, feeRate: 0, spread: 0.336, name: 'Stříbro' },
+    silver_10oz: { yield: 0.1320, feeRate: 0, spread: 0.433, name: 'Stříbro' },
+    btc: { yield: 0.1890, feeRate: 0, spread: 0.0800, name: 'Bitcoin' }
 };
 
 // SELECTION
