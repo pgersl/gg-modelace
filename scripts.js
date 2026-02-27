@@ -11,6 +11,15 @@ const ASSET_BASE = {
     btc: { yield: 0.1890, feeRate: 0, spread: 0.0800, name: 'Bitcoin' }
 };
 
+function futureValue(initial, monthly, r, years) {
+    let value = initial;
+    for (let i = 1; i <= years * 12; i++) {
+        value *= Math.pow(1 + r, 1 / 12);
+        value += monthly;
+    }
+    return value
+}
+
 // SELECTION
 
 const navButtons = document.querySelectorAll('.nav-button');
@@ -43,24 +52,7 @@ function calculateInvestment() {
     const inflation = inflationInput / 100;
 
     const realYield = nominalYield - inflation;
-
-    function futureValue(initial, monthly, r, years) {
-
-        if (r === 0) {
-            return initial + monthly * 12 * years;
-        }
-
-        let value = initial;
-
-        for (let y = 1; y <= years; y++) {
-            value =
-                value * (1 + r) +
-                monthly * 12 *
-                ((Math.pow(1 + r / 12, 12) - 1) / (r / 12));
-        }
-
-        return value;
-    }
+    console.log(realYield)
 
     const totalInvested = initial + monthly * 12 * years;
 
@@ -378,19 +370,6 @@ function calculatePensionComparison() {
 
     const pfMonthlyTotal = monthlyClient + monthlyEmployer;
 
-    function futureValue(initial, monthly, r, years) {
-        let value = initial;
-
-        for (let y = 1; y <= years; y++) {
-            value =
-                value * (1 + r) +
-                monthly * 12 *
-                ((Math.pow(1 + r / 12, 12) - 1) / (r / 12));
-        }
-
-        return value;
-    }
-
     const oldFuture = futureValue(pensionVal, monthlyTotal, yieldPA, years);
     const newFuture = futureValue(pfInitialInvestment, pfMonthlyTotal, pfYield, years);
 
@@ -559,19 +538,6 @@ function calculateBuildingSavingsComparison() {
     const pfInitialInvestment = Math.max(0, returnedAmount - entryFee);
 
     const pfYield = ASSET_BASE.pf.yield;
-
-    function futureValue(initial, monthly, r, years) {
-        let value = initial;
-
-        for (let y = 1; y <= years; y++) {
-            value =
-                value * (1 + r) +
-                monthly * 12 *
-                ((Math.pow(1 + r / 12, 12) - 1) / (r / 12));
-        }
-
-        return value;
-    }
 
     const oldFuture = futureValue(buildingsVal, monthlyTotal, yieldPA, years);
     const newFuture = futureValue(pfInitialInvestment, monthlyClient, pfYield, years);
