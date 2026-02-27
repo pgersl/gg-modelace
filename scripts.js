@@ -28,6 +28,126 @@ navButtons.forEach((button, index) => {
     });
 });
 
+// INVESTMENT CALCULATOR
+
+let calcChart;
+
+function calculateInvestment() {
+    const initial = parseFloat(document.getElementById('calcInit').value) || 0;
+    const monthly = parseFloat(document.getElementById('calcMonthly').value) || 0;
+    const yieldPAInput = parseFloat(document.getElementById('calcYield').value) || 0;
+    const years = parseFloat(document.getElementById('calcYears').value) || 0;
+    const inflationInput = parseFloat(document.getElementById('calcInflation').value) || 0;
+
+    const nominalYield = yieldPAInput / 100;
+    const inflation = inflationInput / 100;
+
+    const realYield = nominalYield - inflation;
+
+    function futureValue(initial, monthly, r, years) {
+
+        if (r === 0) {
+            return initial + monthly * 12 * years;
+        }
+
+        let value = initial;
+
+        for (let y = 1; y <= years; y++) {
+            value =
+                value * (1 + r) +
+                monthly * 12 *
+                ((Math.pow(1 + r / 12, 12) - 1) / (r / 12));
+        }
+
+        return value;
+    }
+
+    const totalInvested = initial + monthly * 12 * years;
+
+    const calcFinal = futureValue(initial, monthly, realYield, years);
+
+    const profit = calcFinal - totalInvested;
+
+    const calcTotalYield = calcFinal / totalInvested;
+    
+    document.getElementById('calcInvested').innerText = formatCZK(totalInvested);
+    document.getElementById('calcFinal').innerText = formatCZK(calcFinal);
+    document.getElementById('calcProfit').innerText = formatCZK(profit);
+
+    document.getElementById('calcTotalYield').innerText = (calcTotalYield * 100).toFixed(2) + ' % / ' + (realYield * 100).toFixed(2) + ' % p.a.';
+    
+    document.getElementById('calcTable').innerHTML = `
+        <tr>
+            <td>${formatCZK(initial)}</td>
+            <td>${formatCZK(monthly)}</td>
+            <td>${years} let</td>
+            <td>${yieldPAInput.toFixed(2)}</td>
+            <td>${inflationInput.toFixed(2)}</td>
+        </tr>
+    `;
+
+    const labels = [];
+    const nominalData = [];
+    const investedData = [];
+
+    for (let y = 0; y <= years; y++) {
+
+        labels.push(`${y}. rok`);
+
+        nominalData.push(futureValue(initial, monthly, nominalYield, y));
+
+        investedData.push(initial + monthly * 12 * y);
+    }
+
+    const ctx = document.getElementById('calcChart').getContext('2d');
+
+    if (calcChart) calcChart.destroy();
+
+    calcChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Hodnota investice',
+                    data: nominalData,
+                    borderColor: '#6d9f88',
+                    backgroundColor: '#6d9f8830',
+                    tension: 0.1,
+                    borderWidth: 1,
+                    fill: 1
+                },
+                {
+                    label: 'Celkem investováno',
+                    data: investedData,
+                    borderColor: '#45403a',
+                    tension: 0,
+                    borderWidth: 1,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: value => formatCZK(value)
+                    }
+                }
+            }
+        }
+    });
+}
+
+document.querySelectorAll('#investment-calculator input')
+    .forEach(el => el.addEventListener('input', calculateInvestment));
+
+calculateInvestment();
+
 // COMPLETE SOLUTION
 
 let pieChart, lineChart;

@@ -22,16 +22,76 @@
             <p>Komplexní řešení vašich investic</p>
         </div>
         <nav class="no-print">
+            <button class="nav-button">Investiční kalkulačka</button>
             <button class="nav-button">Kompletní řešení</button>
             <button class="nav-button">DPS/PP</button>
             <button class="nav-button">Stavební spoření</button>
             <button class="nav-button">Péče</button>
         </nav>
         <div class="title only-print">
+            <h1>Investiční kalkulačka</h1>
             <h1>Modelace kompletního řešení</h1>
             <h1>Srovnání DPS/PP a DIP</h1>
             <h1>Srovnání stavebního spoření a permanentního fondu</h1>
             <h1>Shrnutí vašeho protfolia</h1>
+        </div>
+        <div class="main-grid" id="investment-calculator">
+            <div class="sidebar no-print">
+                <div class="card">
+                    <h2>Vstupní parametry</h2>
+                    <div class="input-group">
+                        <label>Jednorázová investice (Kč)</label>
+                        <input type="number" id="calcInit" value="500000" step="1000">
+                    </div>
+                    <div class="input-group">
+                        <label>Měsíční úložka celkem (Kč)</label>
+                        <input type="number" id="calcMonthly" value="5000" step="500">
+                    </div>
+                    <div class="input-group">
+                        <label>Průměrná roční výnosnost (% p.a.)</label>
+                        <input type="number" id="calcYield" value="7.9" max="25" min="0" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Investiční horizont (roky)</label>
+                        <input type="number" id="calcYears" value="20" max="100" min="1" step="1">
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Inflace</h2>
+                    <div class="input-group">
+                        <label>Průměrná roční míra inflace (% p.a.)</label>
+                        <input type="number" id="calcInflation" value="2.4" max="10" min="0" step="0.01">
+                    </div>
+                </div>
+                <button class="print-button" onclick="window.print()">Exportovat kalkulačku</button>
+            </div>
+            <div class="content">
+                <div class="summary-grid">
+                    <div class="stat-card" style="background-color: var(--primary);"><div>Celkem investováno</div><div id="calcInvested">0 Kč</div></div>
+                    <div class="stat-card" style="background:var(--success)"><div>Budoucí hodnota</div><div id="calcFinal">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--accent);"><div>Čistý zisk</div><div id="calcProfit">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--gold);"><div>Celkový výnos / p.a.</div><div id="calcTotalYield">0 % / 0 % p.a.</div></div>
+                </div>
+                <div class="card only-print">
+                    <h2>Shrnutí investice</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Jednorázová investice (Kč)</th>
+                                <th>Měsíční úložka (Kč)</th>
+                                <th>Investiční horizont (roky)</th>
+                                <th>Průměrná roční výnosnost (% p.a.)</th>
+                                <th>Průměrná roční míra inflace (% p.a.)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="calcTable"></tbody>
+                    </table>
+                </div>
+                <div class="card">
+                    <h2>Vývoj investice v čase</h2>
+                    <div class="chart-box"><canvas id="calcChart"></canvas></div>
+                </div>
+            </div>
         </div>
         <div class="main-grid" id="complete-solution">
             <div class="sidebar no-print">
