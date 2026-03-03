@@ -59,7 +59,7 @@ function calculateInvestment() {
 
     const profit = calcFinal - totalInvested;
 
-    const calcTotalYield = calcFinal / totalInvested;
+    const calcTotalYield = (calcFinal - totalInvested) / totalInvested;
     
     document.getElementById('calcInvested').innerText = formatCZK(totalInvested);
     document.getElementById('calcFinal').innerText = formatCZK(calcFinal);
@@ -110,7 +110,6 @@ function calculateInvestment() {
                     label: 'Celkem investováno',
                     data: investedData,
                     borderColor: '#45403a',
-                    backgroundColor: '#45403a61',
                     tension: 0,
                     borderWidth: 1,
                     fill: false
