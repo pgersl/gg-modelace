@@ -52,7 +52,6 @@ function calculateInvestment() {
     const inflation = inflationInput / 100;
 
     const realYield = nominalYield - inflation;
-    console.log(realYield)
 
     const totalInvested = initial + monthly * 12 * years;
 
@@ -86,7 +85,7 @@ function calculateInvestment() {
 
         labels.push(`${y}. rok`);
 
-        nominalData.push(futureValue(initial, monthly, nominalYield, y));
+        nominalData.push(futureValue(initial, monthly, realYield, y));
 
         investedData.push(initial + monthly * 12 * y);
     }
@@ -103,8 +102,6 @@ function calculateInvestment() {
                 {
                     label: 'Hodnota investice',
                     data: nominalData,
-                    borderColor: '#6d9f88',
-                    backgroundColor: '#6d9f8830',
                     tension: 0.1,
                     borderWidth: 1,
                     fill: 1
@@ -133,6 +130,14 @@ function calculateInvestment() {
             }
         }
     });
+
+    if (profit > 0) {
+        calcChart.data.datasets[0].backgroundColor = '#6d9f8830';
+        calcChart.data.datasets[0].borderColor = '#6d9f88';
+    } else {
+        calcChart.data.datasets[0].backgroundColor = '#b84b4b6b';
+        calcChart.data.datasets[0].borderColor = '#b84b4b';
+    }
 }
 
 document.querySelectorAll('#investment-calculator input')
