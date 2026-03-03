@@ -110,6 +110,7 @@ function calculateInvestment() {
                     label: 'Celkem investováno',
                     data: investedData,
                     borderColor: '#45403a',
+                    backgroundColor: '#45403a61',
                     tension: 0,
                     borderWidth: 1,
                     fill: false
@@ -134,9 +135,11 @@ function calculateInvestment() {
     if (profit > 0) {
         calcChart.data.datasets[0].backgroundColor = '#6d9f8830';
         calcChart.data.datasets[0].borderColor = '#6d9f88';
+        calcChart.update();
     } else {
         calcChart.data.datasets[0].backgroundColor = '#b84b4b6b';
         calcChart.data.datasets[0].borderColor = '#b84b4b';
+        calcChart.update();
     }
 }
 
