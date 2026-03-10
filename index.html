@@ -116,14 +116,31 @@
                     <div class="input-group"><label>Komoditní účet (%)</label><input type="number" id="pctCom" value="30" step="1"></div>
                     <div class="input-group"><label>Bitcoinový účet (%)</label><input type="number" id="pctBTC" value="10" step="1"></div>
                 </div>
-                <div class="card" id="cardTargets">
-                    <h2>Cílové částky</h2>
+                <div class="card" id="cardPFParams">
+                    <h2>Parametry permanentního fondu</h2>
                     <div class="input-group" id="containerTargetPF"><label>Permanentní fond (Kč)</label><input type="number" id="targetPF" value="1000000" step="10000"></div>
-                    <div class="input-group" id="containerTargetCom"><label>Komoditní účet (Kč)</label><input type="number" id="targetCom" value="500000" step="10000"></div>
-                    <div class="input-group" id="containerTargetBTC"><label>Bitcoinový účet (Kč)</label><input type="number" id="targetBTC" value="100000" step="10000"></div>
+                    <div class="input-group">
+                        <label>Vstupní poplatek</label>
+                        <select id="feeTypePF">
+                            <option value="full">Plně předplacený</option>
+                            <option value="base">Základní</option>
+                            <option value="partial">Částečně předplacený</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="card" id="cardComParams">
                     <h2>Parametry komoditního účtu</h2>
+                    <div class="input-group" id="containerTargetCom"><label>Cílová částka (Kč)</label><input type="number" id="targetCom" value="500000" step="10000"></div>
+                    <div class="input-group">
+                        <label>Startovací platba</label>
+                        <select id="feeTypeCom">
+                            <option value="full">Plně předplacená</option>
+                            <option value="payg">Postupně splácená</option>
+                        </select>
+                    </div>
+                    <hr>
+                    <div class="input-group"><label>Poměr zlata (ku stříbru v %)</label><input type="number" id="pctGold" value="60" step="1"></div>
+                    <hr>
                     <div class="input-group">
                         <label>Zlato (varianta)</label>
                         <select id="variantGold">
@@ -139,8 +156,15 @@
                             <option value="silver_10oz">10 oz slitek</option>
                         </select>
                     </div>
+                </div>
+                <div class="card" id="cardCryptoParams">
+                    <h2>Parametry bitcoinového účtu</h2>
+                    <div class="input-group" id="containerTargetBTC"><label>Cílová částka (Kč)</label><input type="number" id="targetBTC" value="100000" step="10000"></div>
                     <hr>
-                    <div class="input-group"><label>Poměr zlata (ku stříbru v %)</label><input type="number" id="pctGold" value="60" step="1"></div>
+                    <div class="input-group">
+                        <label>Poměr BTC (ku ETH v %)</label>
+                        <input type="number" id="pctBTCinCrypto" value="85" step="1">
+                    </div>
                 </div>
                 <button class="print-button" onclick="window.print()">Exportovat modelaci</button>
             </div>
@@ -168,7 +192,7 @@
                             <tr>
                                 <th>Produkt</th>
                                 <th>Investice</th>
-                                <th>Poplatek (%)</th>
+                                <th>Typ poplatku</th>
                                 <th>Poplatek (Kč)</th>
                                 <th>Spread (%)</th>
                                 <th>Okamžitá hodnota</th>
@@ -184,6 +208,7 @@
                             <tr>
                                 <th>Produkt</th>
                                 <th>Měsíční vklad</th>
+                                <th>Poplatek (Kč)</th>
                                 <th>Spread (%)</th>
                                 <th>Okamžitá hodnota</th>
                             </tr>
@@ -312,7 +337,7 @@
                     <h2>Základní vstupy</h2>
                     <div class="input-group">
                         <label>Aktuální stav (Kč)</label>
-                        <input type="number" id="buildingsVal" value="150000" step="1000">
+                        <input type="number" id="buildingsVal" value="160000" step="1000">
                     </div>
                     <div class="input-group">
                         <label>Doba trvání (roky)</label>
@@ -320,18 +345,18 @@
                     </div>
                     <div class="input-group">
                         <label>Cílová částka (Kč)</label>
-                        <input type="number" id="buildingsTarget" value="150000" step="1000">
+                        <input type="number" id="buildingsTarget" value="400000" step="1000">
                     </div>
                 </div>
                 <div class="card">
                     <h2>Vklady</h2>
                     <div class="input-group">
                         <label>Celkové vklady klienta (Kč)</label>
-                        <input type="number" id="buildingClientDeposit" value="120000" step="1000">
+                        <input type="number" id="buildingClientDeposit" value="150000" step="1000">
                     </div>
                     <div class="input-group">
                         <label>Celková státní podpora (%)</label>
-                        <input type="number" id="buildingStateDeposit" value="6000" step="1000">
+                        <input type="number" id="buildingStateDeposit" value="3000" step="1000">
                     </div>
                 </div>
                 <div class="card">
@@ -443,14 +468,25 @@
                     </div>
                 </div>
                 <div class="card">
-                    <h2>Vstupy: BTC</h2>
+                    <h2>Vstupy: Bitcoin</h2>
                     <div class="input-group">
                         <label>Celková investice (Kč)</label>
-                        <input type="number" id="totalInvestmentBTC" value="100000" step="1000">
+                        <input type="number" id="totalInvestmentBTC" value="85000" step="1000">
                     </div>
                     <div class="input-group">
                         <label>Aktuální hodnota (Kč)</label>
-                        <input type="number" id="currentValueBTC" value="67000" step="1000">
+                        <input type="number" id="currentValueBTC" value="65280" step="1000">
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Vstupy: Ethereum</h2>
+                    <div class="input-group">
+                        <label>Celková investice (Kč)</label>
+                        <input type="number" id="totalInvestmentETH" value="15000" step="1000">
+                    </div>
+                    <div class="input-group">
+                        <label>Aktuální hodnota (Kč)</label>
+                        <input type="number" id="currentValueETH" value="11205" step="1000">
                     </div>
                 </div>
                 <button class="print-button" onclick="window.print()">Exportovat shrnutí</button>

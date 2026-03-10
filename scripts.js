@@ -1,27 +1,52 @@
+// ====================== CONFIG & DEFAULTS ======================
 Chart.defaults.font.family = "'Raleway', sans-serif";
 Chart.defaults.color = '#45403a';
 
 const ASSET_BASE = {
-    pf: { yield: 0.0790, feeRate: 0, spread: 0, name: 'Permanentní fond' },
+    pf:        { yield: 0.0790, feeRate: 0, spread: 0,    name: 'Permanentní fond' },
     gold_14oz: { yield: 0.1132, feeRate: 0, spread: 0.076, name: 'Zlato' },
-    gold_1oz: { yield: 0.1132, feeRate: 0, spread: 0.076, name: 'Zlato' },
-    gold_50g: { yield: 0.1132, feeRate: 0, spread: 0.078, name: 'Zlato' },
-    silver_1kg: { yield: 0.1320, feeRate: 0, spread: 0.336, name: 'Stříbro' },
-    silver_10oz: { yield: 0.1320, feeRate: 0, spread: 0.433, name: 'Stříbro' },
-    btc: { yield: 0.1890, feeRate: 0, spread: 0.0800, name: 'Bitcoin' }
+    gold_1oz:  { yield: 0.1132, feeRate: 0, spread: 0.076, name: 'Zlato' },
+    gold_50g:  { yield: 0.1132, feeRate: 0, spread: 0.078, name: 'Zlato' },
+    silver_1kg:{ yield: 0.1320, feeRate: 0, spread: 0.336, name: 'Stříbro' },
+    silver_10oz:{yield: 0.1320, feeRate: 0, spread: 0.433, name: 'Stříbro' },
+    btc:       { yield: 0.1890, feeRate: 0, spread: 0.1150, name: 'Bitcoin' },
+    eth:       { yield: 0.1350, feeRate: 0, spread: 0.1150, name: 'Ethereum' }
 };
 
+// ====================== UTILITIES ======================
 function futureValue(initial, monthly, r, years) {
     let value = initial;
     for (let i = 1; i <= years * 12; i++) {
         value *= Math.pow(1 + r, 1 / 12);
         value += monthly;
     }
-    return value
+    return value;
 }
 
-// SELECTION
+function formatCZK(val) {
+    return new Intl.NumberFormat('cs-CZ', {
+        style: 'currency',
+        currency: 'CZK',
+        maximumFractionDigits: 0
+    }).format(val);
+}
 
+function calculateAnnualizedYield(totalContributed, finalValue, years) {
+    if (years <= 0 || totalContributed <= 0) return 0;
+    if (finalValue <= totalContributed) return 0;
+
+    const monthlyContribution = totalContributed / (years * 12);
+    let low = -0.5, high = 2.0, rate = 0.05;
+    for (let i = 0; i < 50; i++) {
+        const projected = futureValue(0, monthlyContribution, rate, years);
+        if (Math.abs(projected - finalValue) < 100) break;
+        if (projected < finalValue) low = rate; else high = rate;
+        rate = (low + high) / 2;
+    }
+    return rate;
+}
+
+// ====================== NAVIGATION ======================
 const navButtons = document.querySelectorAll('.nav-button');
 const mainGrids = document.querySelectorAll('.main-grid');
 const sectionTitles = document.querySelectorAll('.title h1');
@@ -37,61 +62,54 @@ navButtons.forEach((button, index) => {
     });
 });
 
-// INVESTMENT CALCULATOR
-
-let calcChart;
+// ====================== INVESTMENT CALCULATOR ======================
+let calcChart = null;
 
 function calculateInvestment() {
-    const initial = parseFloat(document.getElementById('calcInit').value) || 0;
-    const monthly = parseFloat(document.getElementById('calcMonthly').value) || 0;
-    const yieldPAInput = parseFloat(document.getElementById('calcYield').value) || 0;
-    const years = parseFloat(document.getElementById('calcYears').value) || 0;
-    const inflationInput = parseFloat(document.getElementById('calcInflation').value) || 0;
+    const initial   = parseFloat(document.getElementById('calcInit').value)     || 0;
+    const monthly   = parseFloat(document.getElementById('calcMonthly').value)  || 0;
+    const yieldPA   = parseFloat(document.getElementById('calcYield').value)    || 0;
+    const years     = parseFloat(document.getElementById('calcYears').value)    || 0;
+    const inflation = parseFloat(document.getElementById('calcInflation').value)|| 0;
 
-    const nominalYield = yieldPAInput / 100;
-    const inflation = inflationInput / 100;
-
-    const realYield = nominalYield - inflation;
+    const nominalYield = yieldPA / 100;
+    const realYield    = nominalYield - (inflation / 100);
 
     const totalInvested = initial + monthly * 12 * years;
+    const calcFinal     = futureValue(initial, monthly, realYield, years);
+    const profit        = calcFinal - totalInvested;
+    const totalYield    = totalInvested > 0 ? (calcFinal - totalInvested) / totalInvested : 0;
 
-    const calcFinal = futureValue(initial, monthly, realYield, years);
+    // Update results
+    document.getElementById('calcInvested').innerText    = formatCZK(totalInvested);
+    document.getElementById('calcFinal').innerText      = formatCZK(calcFinal);
+    document.getElementById('calcProfit').innerText     = formatCZK(profit);
+    document.getElementById('calcTotalYield').innerText = `${(totalYield * 100).toFixed(2)} % / ${(realYield * 100).toFixed(2)} % p.a.`;
 
-    const profit = calcFinal - totalInvested;
-
-    const calcTotalYield = (calcFinal - totalInvested) / totalInvested;
-    
-    document.getElementById('calcInvested').innerText = formatCZK(totalInvested);
-    document.getElementById('calcFinal').innerText = formatCZK(calcFinal);
-    document.getElementById('calcProfit').innerText = formatCZK(profit);
-
-    document.getElementById('calcTotalYield').innerText = (calcTotalYield * 100).toFixed(2) + ' % / ' + (realYield * 100).toFixed(2) + ' % p.a.';
-    
+    // Update table
     document.getElementById('calcTable').innerHTML = `
         <tr>
             <td>${formatCZK(initial)}</td>
             <td>${formatCZK(monthly)}</td>
             <td>${years} let</td>
-            <td>${yieldPAInput.toFixed(2)}</td>
-            <td>${inflationInput.toFixed(2)}</td>
+            <td>${yieldPA.toFixed(2)}</td>
+            <td>${inflation.toFixed(2)}</td>
         </tr>
     `;
 
+    // Prepare chart data
     const labels = [];
-    const nominalData = [];
+    const valueData = [];
     const investedData = [];
 
     for (let y = 0; y <= years; y++) {
-
         labels.push(`${y}. rok`);
-
-        nominalData.push(futureValue(initial, monthly, realYield, y));
-
+        valueData.push(futureValue(initial, monthly, realYield, y));
         investedData.push(initial + monthly * 12 * y);
     }
 
+    // Create / update chart
     const ctx = document.getElementById('calcChart').getContext('2d');
-
     if (calcChart) calcChart.destroy();
 
     calcChart = new Chart(ctx, {
@@ -101,7 +119,7 @@ function calculateInvestment() {
             datasets: [
                 {
                     label: 'Hodnota investice',
-                    data: nominalData,
+                    data: valueData,
                     tension: 0.1,
                     borderWidth: 1,
                     fill: 1
@@ -118,171 +136,259 @@ function calculateInvestment() {
         },
         options: {
             maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom' }
-            },
+            plugins: { legend: { position: 'bottom' } },
             scales: {
-                y: {
-                    ticks: {
-                        callback: value => formatCZK(value)
-                    }
-                }
+                y: { ticks: { callback: value => formatCZK(value) } }
             }
         }
     });
 
+    // Color based on profit
     if (profit > 0) {
         calcChart.data.datasets[0].backgroundColor = '#6d9f8830';
-        calcChart.data.datasets[0].borderColor = '#6d9f88';
-        calcChart.update();
+        calcChart.data.datasets[0].borderColor     = '#6d9f88';
     } else {
         calcChart.data.datasets[0].backgroundColor = '#b84b4b6b';
-        calcChart.data.datasets[0].borderColor = '#b84b4b';
-        calcChart.update();
+        calcChart.data.datasets[0].borderColor     = '#b84b4b';
     }
+    calcChart.update();
 }
 
-document.querySelectorAll('#investment-calculator input')
-    .forEach(el => el.addEventListener('input', calculateInvestment));
+// Auto-recalculate
+document.querySelectorAll('#investment-calculator input').forEach(el =>
+    el.addEventListener('input', calculateInvestment)
+);
+calculateInvestment();   // initial call
 
-calculateInvestment();
+// ====================== COMPLETE SOLUTION ======================
+let pieChart = null;
+let lineChart = null;
 
-// COMPLETE SOLUTION
-
-let pieChart, lineChart;
-
-function formatCZK(val) {
-    return new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', maximumFractionDigits: 0 }).format(val);
-}
-
-function toggleVisibility(pPF, pCom, pBTC) {
-    document.getElementById('containerTargetPF').classList.toggle('hidden', pPF <= 0);
-    document.getElementById('containerTargetCom').classList.toggle('hidden', pCom <= 0);
-    document.getElementById('containerTargetBTC').classList.toggle('hidden', pBTC <= 0);
-    
-    document.getElementById('cardTargets').classList.toggle('hidden', (pPF + pCom + pBTC) <= 0);
+function toggleVisibility(pPF, pCom, pCrypto) {
+    document.getElementById('cardPFParams').classList.toggle('hidden', pPF <= 0);
     document.getElementById('cardComParams').classList.toggle('hidden', pCom <= 0);
+    document.getElementById('cardCryptoParams').classList.toggle('hidden', pCrypto <= 0);
 }
 
 function calculate() {
-    const totalInit = parseFloat(document.getElementById('totalInit').value) || 0;
+    const totalInit    = parseFloat(document.getElementById('totalInit').value) || 0;
     const totalMonthly = parseFloat(document.getElementById('totalMonthly').value) || 0;
-    const years = parseFloat(document.getElementById('years').value) || 0;
-    const vGold = document.getElementById('variantGold').value;
+    const years        = parseFloat(document.getElementById('years').value) || 0;
+
+    const vGold   = document.getElementById('variantGold').value;
     const vSilver = document.getElementById('variantSilver').value;
-    const pPF = (parseFloat(document.getElementById('pctPF').value) || 0) / 100;
-    const pCom = (parseFloat(document.getElementById('pctCom').value) || 0) / 100;
-    const pBTC = (parseFloat(document.getElementById('pctBTC').value) || 0) / 100;
-    const pGoldInCom = (parseFloat(document.getElementById('pctGold').value) || 0) / 100;
-    toggleVisibility(pPF, pCom, pBTC);
-    const weights = { pf: pPF, gold: pCom * pGoldInCom, silver: pCom * (1 - pGoldInCom), btc: pBTC };
-    
+
+    const pPF   = (parseFloat(document.getElementById('pctPF').value) || 0) / 100;
+    const pCom  = (parseFloat(document.getElementById('pctCom').value) || 0) / 100;
+    const pCrypto = (parseFloat(document.getElementById('pctBTC').value) || 0) / 100;
+    const pGold = (parseFloat(document.getElementById('pctGold').value) || 0) / 100;
+    const pBTCShare = (parseFloat(document.getElementById('pctBTCinCrypto').value) || 85) / 100;
+
+    const feeTypePF = document.getElementById('feeTypePF').value;
+    const feeTypeCom = document.getElementById('feeTypeCom').value;
+
+    toggleVisibility(pPF, pCom, pCrypto);
+
+    const weights = {
+        pf: pPF,
+        gold: pCom * pGold,
+        silver: pCom * (1 - pGold),
+        btc: pCrypto * pBTCShare,
+        eth: pCrypto * (1 - pBTCShare)
+    };
+
     const currentAssets = {
         pf: {...ASSET_BASE.pf},
         gold: {...ASSET_BASE[vGold]},
         silver: {...ASSET_BASE[vSilver]},
-        btc: {...ASSET_BASE.btc}
+        btc: {...ASSET_BASE.btc},
+        eth: {...ASSET_BASE.eth}
     };
+
+    const targetCrypto = parseFloat(document.getElementById('targetBTC').value) || 0;
+    const targetPF = parseFloat(document.getElementById('targetPF').value) || 0;
+    const targetCom = parseFloat(document.getElementById('targetCom').value) || 0;
+
     const targets = {
-        pf: parseFloat(document.getElementById('targetPF').value) || 0,
-        gold: (parseFloat(document.getElementById('targetCom').value) || 0) * pGoldInCom,
-        silver: (parseFloat(document.getElementById('targetCom').value) || 0) * (1 - pGoldInCom),
-        btc: parseFloat(document.getElementById('targetBTC').value) || 0
+        pf: targetPF,
+        gold: targetCom * pGold,
+        silver: targetCom * (1 - pGold),
+        btc: targetCrypto * pBTCShare,
+        eth: targetCrypto * (1 - pBTCShare)
     };
 
-
+    // Dynamic base fees
     if (targets.pf >= 5000000) currentAssets.pf.feeRate = 0.02;
     else if (targets.pf >= 1000000) currentAssets.pf.feeRate = 0.03;
     else currentAssets.pf.feeRate = 0.04;
-    if (targets.gold + targets.silver >= 1000000) {
-        currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.03;
-    } else if (targets.gold + targets.silver >= 700000) {
-        currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.04;
-    } else {
-        currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.05;
-    }
-    if (targets.btc >= 1000000) currentAssets.btc.feeRate = 0.015;
-    else if (targets.btc >= 500000) currentAssets.btc.feeRate = 0.02;
-    else currentAssets.btc.feeRate = 0.03;
-    
+
+    const comTotal = targets.gold + targets.silver;
+    if (comTotal >= 1000000) currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.03;
+    else if (comTotal >= 700000) currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.04;
+    else currentAssets.gold.feeRate = currentAssets.silver.feeRate = 0.05;
+
+    const cryptoTotal = targetCrypto;
+    if (cryptoTotal >= 1000000) currentAssets.btc.feeRate = currentAssets.eth.feeRate = 0.015;
+    else if (cryptoTotal >= 500000) currentAssets.btc.feeRate = currentAssets.eth.feeRate = 0.02;
+    else currentAssets.btc.feeRate = currentAssets.eth.feeRate = 0.03;
+
+    // === Tables & projections ===
     let lumpHtml = '';
     let regHtml = '';
-    let labels = [];
-    let chartDataValue = Array(years + 1).fill(0);
-    let chartDataInvested = Array(years + 1).fill(0);
-    
-    for(let y=0; y<=years; y++) {
+    const labels = [];
+    const chartValue = Array(years + 1).fill(0);
+    const chartInvested = Array(years + 1).fill(0);
+
+    for (let y = 0; y <= years; y++) {
         labels.push(`${y}. rok`);
-        chartDataInvested[y] = totalInit + (totalMonthly * 12 * y);
+        chartInvested[y] = totalInit + totalMonthly * 12 * y;
     }
-    
+
     Object.keys(weights).forEach(key => {
         const w = weights[key];
-        if(w <= 0) return;
+        if (w <= 0) return;
+
         const asset = currentAssets[key];
         const initInv = totalInit * w;
         const monthInv = totalMonthly * w;
-        const fee = targets[key] * asset.feeRate;
-        const startVal = Math.max(0, (initInv - fee) * (1 - asset.spread));
-        const afterSpreadMonth = monthInv * (1 - asset.spread);
-    
-        lumpHtml += `<tr><td>${asset.name}</td><td>${formatCZK(initInv)}</td><td>${(asset.feeRate*100).toFixed(1)} %</td><td>${formatCZK(fee)}</td><td>${(asset.spread*100).toFixed(1)} %</td><td class="val-bold">${formatCZK(startVal)}</td></tr>`;
-        regHtml += `<tr><td>${asset.name}</td><td>${formatCZK(monthInv)}</td><td>${(asset.spread*100).toFixed(1)} %</td><td class="val-bold">${formatCZK(afterSpreadMonth)}</td></tr>`;
+        const target = targets[key];
+
+        let upfrontFee = 0;
+        let effectiveMonthlyDeductionRate = 0;
+        let totalFeeToPay = 0;
+        let feeMethodText = '';
+
+        if (key === 'btc' || key === 'eth') {
+            upfrontFee = target * asset.feeRate;
+            feeMethodText = 'Plně předplacený';
+        } else if (key === 'gold' || key === 'silver') {
+            const baseFeeRate = asset.feeRate;
+            if (feeTypeCom === 'payg') {
+                upfrontFee = target * 0.01;
+                totalFeeToPay = target * (baseFeeRate + 0.01);
+                effectiveMonthlyDeductionRate = baseFeeRate;
+                feeMethodText = 'Postupně splácený';
+            } else {
+                upfrontFee = target * baseFeeRate;
+                feeMethodText = 'Plně předplacený';
+            }
+        } else if (key === 'pf') {
+            const baseFeeRate = asset.feeRate;
+            if (feeTypePF === 'base') {
+                upfrontFee = 0;
+                feeMethodText = 'Základní';
+                effectiveMonthlyDeductionRate = baseFeeRate + 0.01;
+            } else if (feeTypePF === 'partial') {
+                upfrontFee = target * 0.01;
+                totalFeeToPay = target * (baseFeeRate + 0.005);
+                effectiveMonthlyDeductionRate = baseFeeRate - 0.005;
+                feeMethodText = 'Částečně předplacený';
+            } else {
+                upfrontFee = target * baseFeeRate;
+                feeMethodText = 'Plně předplacený';
+            }
+        }
+
+        const startVal = Math.max(0, (initInv - upfrontFee) * (1 - asset.spread));
+
+        // === FIXED: Spread applied FIRST, then monthly fee ===
+        const grossAfterSpread = monthInv * (1 - asset.spread);
+        const monthlyFeeCZK = monthInv * effectiveMonthlyDeductionRate;           // for table
+        const netMonthlyInvestment = Math.max(0, grossAfterSpread - monthlyFeeCZK); // for table + simulation
+
+        lumpHtml += `<tr>
+            <td>${asset.name}</td>
+            <td>${formatCZK(initInv)}</td>
+            <td>${feeMethodText}</td>
+            <td>${formatCZK(upfrontFee)}</td>
+            <td>${(asset.spread*100).toFixed(1)} %</td>
+            <td class="val-bold">${formatCZK(startVal)}</td>
+        </tr>`;
+
+        regHtml += `<tr>
+            <td>${asset.name}</td>
+            <td>${formatCZK(monthInv)}</td>
+            <td>${monthlyFeeCZK > 0 ? formatCZK(monthlyFeeCZK) : '0 Kč'}</td>
+            <td>${(asset.spread*100).toFixed(1)} %</td>
+            <td class="val-bold">${formatCZK(netMonthlyInvestment)}</td>
+        </tr>`;
+
+        // === Accurate simulation (same net amount as table) ===
         let currentVal = startVal;
-        chartDataValue[0] += currentVal;
-     
-        for(let y=1; y<=years; y++) {
-            const r = asset.yield;
-            const m = afterSpreadMonth;
-            currentVal = (currentVal * (1 + r)) + (m * ((Math.pow(1 + r/12, 12) - 1) / (r/12)));
-            chartDataValue[y] += currentVal;
+        let cumulativeInvested = initInv;
+        let remainingFeeToPay = totalFeeToPay - upfrontFee;
+        let currentMonthlyFeeRate = effectiveMonthlyDeductionRate;
+
+        chartValue[0] += currentVal;
+
+        for (let y = 1; y <= years; y++) {
+            for (let m = 1; m <= 12; m++) {
+                let monthlyDeduction = 0;
+                if (remainingFeeToPay > 0 && currentMonthlyFeeRate > 0) {
+                    monthlyDeduction = monthInv * currentMonthlyFeeRate;
+                    if (monthlyDeduction > remainingFeeToPay) monthlyDeduction = remainingFeeToPay;
+                    remainingFeeToPay -= monthlyDeduction;
+                }
+
+                if (key === 'pf' && feeTypePF === 'base') {
+                    if (cumulativeInvested < 1000000) currentMonthlyFeeRate = 0.05;
+                    else if (cumulativeInvested < 5000000) currentMonthlyFeeRate = 0.04;
+                    else currentMonthlyFeeRate = 0.03;
+                }
+
+                const netMonthly = grossAfterSpread - monthlyDeduction;   // ← this is the real amount invested each month
+                currentVal = currentVal * (1 + asset.yield / 12) + netMonthly;
+                cumulativeInvested += monthInv;
+            }
+            chartValue[y] += currentVal;
         }
     });
-    
+
     document.getElementById('lumpSumTable').innerHTML = lumpHtml;
     document.getElementById('regularTable').innerHTML = regHtml;
-    
-    const finalVal = chartDataValue[years];
-    const totalInvested = chartDataInvested[years];
+
+    const finalVal = chartValue[years];
+    const totalInvested = chartInvested[years];
     const totalProfit = finalVal - totalInvested;
-    
+
     document.getElementById('resInvested').innerText = formatCZK(totalInvested);
     document.getElementById('resFinal').innerText = formatCZK(finalVal);
     document.getElementById('resProfit').innerText = formatCZK(totalProfit);
-    
+
     if (totalInvested > 0 && years > 0) {
         const totalYieldPct = (totalProfit / totalInvested) * 100;
-        const paYield = (Math.pow(finalVal / totalInvested, 1/years) - 1) * 100;
+        const paYield = (Math.pow(finalVal / totalInvested, 1 / years) - 1) * 100;
         document.getElementById('resYield').innerText = `${totalYieldPct.toFixed(1)} % / ${paYield.toFixed(2)} % p.a.`;
     } else {
         document.getElementById('resYield').innerText = "0 % / 0 %";
     }
-    
-    updateCharts(weights, labels, chartDataValue, chartDataInvested);
+
+    updateCharts(weights, labels, chartValue, chartInvested);
 }
 
 function updateCharts(weights, labels, dataVal, dataInv) {
     const pieCtx = document.getElementById('pieChart').getContext('2d');
-    
-    if(pieChart) pieChart.destroy();
-    
+    if (pieChart) pieChart.destroy();
+
     pieChart = new Chart(pieCtx, {
         type: 'doughnut',
         data: {
-            labels: ['Zlato', 'Stříbro', 'Bitcoin', 'Permanentní fond'],
+            labels: ['Zlato', 'Stříbro', 'Bitcoin', 'Ethereum', 'Permanentní fond'],
             datasets: [{
-                data: [weights.gold, weights.silver, weights.btc, weights.pf],
-                backgroundColor: ['#edc079', '#b2ab9e', '#ffa23c', '#6d9f88'],
+                data: [weights.gold, weights.silver, weights.btc, weights.eth, weights.pf],
+                backgroundColor: ['#edc079', '#b2ab9e', '#ffa23c', '#B9C4DE', '#6d9f88'],
                 borderWidth: 0
             }]
         },
-        options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } }
+        }
     });
-    
+
     const lineCtx = document.getElementById('lineChart').getContext('2d');
-    
-    if(lineChart) lineChart.destroy();
-    
+    if (lineChart) lineChart.destroy();
+
     lineChart = new Chart(lineCtx, {
         type: 'line',
         data: {
@@ -295,7 +401,7 @@ function updateCharts(weights, labels, dataVal, dataInv) {
         options: { 
             maintainAspectRatio: false,
             plugins: { legend: { position: 'bottom' } },
-            scales: { y: { ticks: { callback: value => formatCZK(value)}}}
+            scales: { y: { ticks: { callback: value => formatCZK(value) }}}
         }
     });
 }
@@ -303,96 +409,71 @@ function updateCharts(weights, labels, dataVal, dataInv) {
 document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
 window.onload = calculate;
 
-// PENSION COMPARISON
-
-let pensionLineChart;
+// ====================== PENSION COMPARISON ======================
+let pensionLineChart = null;
 
 function calculatePensionComparison() {
-
-    const pensionVal = parseFloat(document.getElementById('pensionVal').value) || 0;
-    const pensionLength = parseFloat(document.getElementById('pensionLength').value) || 0;
-
-    const clientDeposit = parseFloat(document.getElementById('pensionClientDeposit').value) || 0;
+    const pensionVal      = parseFloat(document.getElementById('pensionVal').value)      || 0;
+    const pensionLength   = parseFloat(document.getElementById('pensionLength').value)   || 0;
+    const clientDeposit   = parseFloat(document.getElementById('pensionClientDeposit').value)   || 0;
     const employerDeposit = parseFloat(document.getElementById('pensionEmployerDeposit').value) || 0;
-    const stateDeposit = parseFloat(document.getElementById('pensionStateDeposit').value) || 0;
-
-    const monthlyClient = parseFloat(document.getElementById('pensionMonthlyClientDeposit').value) || 0;
+    const stateDeposit    = parseFloat(document.getElementById('pensionStateDeposit').value)    || 0;
+    const monthlyClient   = parseFloat(document.getElementById('pensionMonthlyClientDeposit').value)   || 0;
     const monthlyEmployer = parseFloat(document.getElementById('pensionMonthlyEmployerDeposit').value) || 0;
-
-    const years = parseFloat(document.getElementById('pensionYears').value) || 0;
-    const targetPF = parseFloat(document.getElementById('pensionTargetPF').value) || 0;
+    const years           = parseFloat(document.getElementById('pensionYears').value)           || 0;
+    const targetPF        = parseFloat(document.getElementById('pensionTargetPF').value)        || 0;
 
     const TAX = 0.15;
 
-    const yearlyClientDeposit = Math.round(clientDeposit / pensionLength)
+    const yearlyClientDeposit = Math.round(clientDeposit / pensionLength);
+    let yearlyTaxDeduction = 0;
+    if (yearlyClientDeposit >= 68400) yearlyTaxDeduction = 48000;
+    else if (yearlyClientDeposit >= 20400) yearlyTaxDeduction = yearlyClientDeposit - 20400;
 
-    let yearlyTaxDeduction = 0
-
-    if (yearlyClientDeposit >= 68400) {
-        yearlyTaxDeduction = 48000
-    } else if (yearlyClientDeposit >= 20400) {
-        yearlyTaxDeduction = yearlyClientDeposit - 20400
-    } else {
-        yearlyTaxDeduction = 0
-    }
-
-    const totalTaxDeductions = yearlyTaxDeduction * pensionLength
-    const totalTaxDeductionsTax = totalTaxDeductions * TAX
-    const returnedClientDeposit = clientDeposit - totalTaxDeductionsTax
+    const totalTaxDeductions     = yearlyTaxDeduction * pensionLength;
+    const totalTaxDeductionsTax  = totalTaxDeductions * TAX;
+    const returnedClientDeposit  = clientDeposit - totalTaxDeductionsTax;
 
     const totalDeposits = clientDeposit + employerDeposit + stateDeposit;
-
     const yieldsBeforeTax = pensionVal - totalDeposits;
-    const yieldsAfterTax = yieldsBeforeTax * (1 - TAX);
+    const yieldsAfterTax  = yieldsBeforeTax * (1 - TAX);
+    const employerAfterTax= employerDeposit * (1 - TAX);
+    const returnedAmount  = returnedClientDeposit + employerAfterTax + yieldsAfterTax;
 
-    const employerAfterTax = employerDeposit * (1 - TAX);
-
-    const returnedAmount = returnedClientDeposit + employerAfterTax + yieldsAfterTax;
-
-    const yieldPA =
-        pensionLength > 0 && totalDeposits > 0
-            ? Math.pow(pensionVal / totalDeposits, 1 / pensionLength) - 1
-            : 0;
+    const yieldPA = calculateAnnualizedYield(totalDeposits, pensionVal, pensionLength);
 
     let pfFeeRate = 0.04;
     if (targetPF >= 5000000) pfFeeRate = 0.02;
     else if (targetPF >= 1000000) pfFeeRate = 0.03;
 
-    const entryFee = targetPF * pfFeeRate;
-    const pfInitialInvestment = Math.max(0, returnedAmount - entryFee);
+    const entryFee          = targetPF * pfFeeRate;
+    const pfInitialInvestment= Math.max(0, returnedAmount - entryFee);
+    const pfYield           = ASSET_BASE.pf.yield;
 
-    const pfYield = ASSET_BASE.pf.yield;
+    let monthlyState = 0;
+    if (monthlyClient >= 500 && monthlyClient <= 1700) monthlyState = monthlyClient * 0.2;
+    else if (monthlyClient > 1700) monthlyState = 340;
 
-    let monthlyState = 0
-
-    if (monthlyClient >= 500 && monthlyClient <= 1700) {
-        monthlyState = monthlyClient * 0.2
-    } else if (monthlyClient > 1700) {
-        monthlyState = 340
-    } else {
-        monthlyState = 0
-    }
-
-    const monthlyTotal = monthlyClient + monthlyEmployer + monthlyState;
-
-    const pfMonthlyTotal = monthlyClient + monthlyEmployer;
+    const monthlyTotal    = monthlyClient + monthlyEmployer + monthlyState;
+    const pfMonthlyTotal  = monthlyClient + monthlyEmployer;
 
     const oldFuture = futureValue(pensionVal, monthlyTotal, yieldPA, years);
     const newFuture = futureValue(pfInitialInvestment, pfMonthlyTotal, pfYield, years);
+    const difference= newFuture - oldFuture;
 
-    const difference = newFuture - oldFuture;
+    // Update summary
+    document.getElementById('pensionOldStrategy').innerText      = formatCZK(oldFuture);
+    document.getElementById('pensionNewStrategy').innerText      = formatCZK(newFuture);
+    document.getElementById('pensionStrategyDifference').innerText= formatCZK(difference);
+    document.getElementById('pensionTotalInvestment').innerText  = formatCZK(pensionVal + monthlyClient * 12 * years);
 
-    document.getElementById('pensionOldStrategy').innerText = formatCZK(oldFuture);
-    document.getElementById('pensionNewStrategy').innerText = formatCZK(newFuture);
-    document.getElementById('pensionStrategyDifference').innerText = formatCZK(difference);
-    document.getElementById('pensionTotalInvestment').innerText = formatCZK(pensionVal + monthlyClient * 12 * years);
-
+    // Tables (kept exactly as original)
     document.getElementById('pensionComparisonTable').innerHTML = `
         <tr><td>Měsíční vklad klienta</td><td>${formatCZK(monthlyClient)}</td><td>${formatCZK(monthlyClient)}</td></tr>
         <tr><td>Měsíční vklad zaměstnavatele</td><td>${formatCZK(monthlyEmployer)}</td><td>${formatCZK(monthlyEmployer)}</td></tr>
         <tr><td>Měsíční státní podpora</td><td>${formatCZK(monthlyState)}</td><td>0 Kč</td></tr>
         <tr><td><strong>Celkem</strong></td><td class="val-bold">${formatCZK(monthlyTotal)}</td><td class="val-bold">${formatCZK(pfMonthlyTotal)}</td></tr>
-        <tr><td>Výnosnost</td><td>${(yieldPA * 100).toFixed(2)} % p.a.</td><td>${(pfYield *100).toFixed(2)} % p.a.</td></tr>
+        <tr><td>Výnosnost</td><td>${(yieldPA * 100).toFixed(2)} % p.a.</td><td>${(pfYield * 100).toFixed(2)} % p.a.</td></tr>
         <tr><td><strong>Počáteční investice</strong></td><td class="val-bold">${formatCZK(pensionVal)}</td><td class="val-bold">${formatCZK(pfInitialInvestment)}</td></tr>
     `;
 
@@ -419,8 +500,7 @@ function calculatePensionComparison() {
     `;
 
     document.getElementById('pensionFinalReturn').innerHTML = `
-        <tr><td><strong>Celkem vráceno</strong></td>
-        <td class="val-bold">${formatCZK(returnedAmount)}</td></tr>
+        <tr><td><strong>Celkem vráceno</strong></td><td class="val-bold">${formatCZK(returnedAmount)}</td></tr>
     `;
 
     document.getElementById('dipInfoTable').innerHTML = `
@@ -429,6 +509,7 @@ function calculatePensionComparison() {
         <tr><td>Jednorázová investice</td><td class="val-bold">${formatCZK(pfInitialInvestment)}</td></tr>
     `;
 
+    // Chart data
     const labels = [];
     const oldData = [];
     const newData = [];
@@ -436,17 +517,12 @@ function calculatePensionComparison() {
 
     for (let y = 0; y <= years; y++) {
         labels.push(`${y}. rok`);
-
         oldData.push(futureValue(pensionVal, monthlyTotal, yieldPA, y));
-        newData.push(futureValue(pfInitialInvestment, monthlyTotal, pfYield, y));
-
-        investedAmount = pfInitialInvestment + pfMonthlyTotal * 12 * y;
-
-        investedData.push(investedAmount);
+        newData.push(futureValue(pfInitialInvestment, pfMonthlyTotal, pfYield, y));   // original logic kept
+        investedData.push(pfInitialInvestment + pfMonthlyTotal * 12 * y);
     }
 
     const ctx = document.getElementById('pensionLineChart').getContext('2d');
-
     if (pensionLineChart) pensionLineChart.destroy();
 
     pensionLineChart = new Chart(ctx, {
@@ -454,118 +530,71 @@ function calculatePensionComparison() {
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Nové řešení',
-                    data: newData,
-                    borderColor: '#6d9f88',
-                    backgroundColor: '#6d9f883f',
-                    tension: 0.1,
-                    borderWidth: 1,
-                    fill: 1
-                },
-                {
-                    label: 'Aktuální řešení',
-                    data: oldData,
-                    borderColor: '#cc331d',
-                    backgroundColor: '#cc331d5f',
-                    tension: 0.1,
-                    borderWidth: 1,
-                    fill: 2
-                },
-                {
-                    label: 'Celková investice',
-                    data: investedData,
-                    borderColor: '#45403a',
-                    backgroundColor: '#45403a61',
-                    tension: 0,
-                    borderWidth: 1,
-                    fill: false
-                },
+                { label: 'Nové řešení',     data: newData,   borderColor: '#6d9f88', backgroundColor: '#6d9f883f', tension: 0.1, borderWidth: 1, fill: 1 },
+                { label: 'Aktuální řešení', data: oldData,   borderColor: '#cc331d', backgroundColor: '#cc331d5f', tension: 0.1, borderWidth: 1, fill: 2 },
+                { label: 'Celková investice', data: investedData, borderColor: '#45403a', backgroundColor: '#45403a61', tension: 0, borderWidth: 1, fill: false }
             ]
         },
         options: {
             maintainAspectRatio: false,
             plugins: { legend: { position: 'bottom' } },
-            scales: {
-                y: {
-                    ticks: {
-                        callback: value => formatCZK(value)
-                    }
-                }
-            }
+            scales: { y: { ticks: { callback: value => formatCZK(value) } } }
         }
     });
 }
 
-document.querySelectorAll(
-    '#pension-comparison input'
-).forEach(el => el.addEventListener('input', calculatePensionComparison));
-
+document.querySelectorAll('#pension-comparison input').forEach(el =>
+    el.addEventListener('input', calculatePensionComparison)
+);
 calculatePensionComparison();
 
-// BUILDING SAVINGS COMPARISON
-
-let buildingLineChart;
+// ====================== BUILDING SAVINGS COMPARISON ======================
+let buildingLineChart = null;
 
 function calculateBuildingSavingsComparison() {
-
-    const buildingsVal = parseFloat(document.getElementById('buildingsVal').value) || 0;
+    const buildingsVal    = parseFloat(document.getElementById('buildingsVal').value)    || 0;
     const buildingsLength = parseFloat(document.getElementById('buildingsLength').value) || 0;
     const buildingsTarget = parseFloat(document.getElementById('buildingsTarget').value) || 0;
+    const clientDeposit   = parseFloat(document.getElementById('buildingClientDeposit').value)   || 0;
+    const stateDeposit    = parseFloat(document.getElementById('buildingStateDeposit').value)    || 0;
+    const monthlyClient   = parseFloat(document.getElementById('buildingMonthlyClientDeposit').value) || 0;
+    const years           = parseFloat(document.getElementById('buildingYears').value)           || 0;
+    const targetPF        = parseFloat(document.getElementById('buildingTargetPF').value)        || 0;
 
-    const clientDeposit = parseFloat(document.getElementById('buildingClientDeposit').value) || 0;
-    const stateDeposit = parseFloat(document.getElementById('buildingStateDeposit').value) || 0;
-
-    const monthlyClient = parseFloat(document.getElementById('buildingMonthlyClientDeposit').value) || 0;
-    const years = parseFloat(document.getElementById('buildingYears').value) || 0;
-    const targetPF = parseFloat(document.getElementById('buildingTargetPF').value) || 0;
-
-    const penalty = buildingsTarget * 0.01;
-
+    const penalty      = buildingsTarget * 0.01;
     const returnedAmount = Math.max(0, buildingsVal - penalty - stateDeposit);
-
-    const yields = buildingsVal - clientDeposit - stateDeposit;
-
+    const yields       = buildingsVal - clientDeposit - stateDeposit;
     const monthlyState = Math.min(0.05 * monthlyClient, 1000 / 12);
-
     const monthlyTotal = monthlyClient + monthlyState;
-
     const totalDeposits = clientDeposit + stateDeposit;
 
-    const yieldPA =
-        buildingsLength > 0 && totalDeposits > 0
-            ? Math.pow(buildingsVal / totalDeposits, 1 / buildingsLength) - 1
-            : 0;
+    const yieldPA = calculateAnnualizedYield(totalDeposits, buildingsVal, buildingsLength);
 
     let pfFeeRate = 0.04;
     if (targetPF >= 5000000) pfFeeRate = 0.02;
     else if (targetPF >= 1000000) pfFeeRate = 0.03;
 
-    const entryFee = targetPF * pfFeeRate;
-    const pfInitialInvestment = Math.max(0, returnedAmount - entryFee);
-
-    const pfYield = ASSET_BASE.pf.yield;
+    const entryFee          = targetPF * pfFeeRate;
+    const pfInitialInvestment= Math.max(0, returnedAmount - entryFee);
+    const pfYield           = ASSET_BASE.pf.yield;
 
     const oldFuture = futureValue(buildingsVal, monthlyTotal, yieldPA, years);
     const newFuture = futureValue(pfInitialInvestment, monthlyClient, pfYield, years);
-
     const difference = newFuture - oldFuture;
 
-    const totalInvestment = buildingsVal + monthlyClient * 12 * years;
+    // Summary
+    document.getElementById('buildingTotalInvestment').innerText      = formatCZK(buildingsVal + monthlyClient * 12 * years);
+    document.getElementById('buildingOldStrategy').innerText         = formatCZK(oldFuture);
+    document.getElementById('buildingNewStrategy').innerText         = formatCZK(newFuture);
+    document.getElementById('buildingStrategyDifference').innerText  = formatCZK(difference);
 
-    document.getElementById('buildingTotalInvestment').innerText = formatCZK(totalInvestment);
-    document.getElementById('buildingOldStrategy').innerText = formatCZK(oldFuture);
-    document.getElementById('buildingNewStrategy').innerText = formatCZK(newFuture);
-    document.getElementById('buildingStrategyDifference').innerText = formatCZK(difference);
-
+    // Tables (original content preserved)
     document.getElementById('buildingComparisonTable').innerHTML = `
         <tr><td>Měsíční vklad klienta</td><td>${formatCZK(monthlyClient)}</td><td>${formatCZK(monthlyClient)}</td></tr>
         <tr><td>Měsíční státní podpora</td><td>${formatCZK(monthlyState)}</td><td>0 Kč</td></tr>
         <tr><td><strong>Celkem</strong></td><td class="val-bold">${formatCZK(monthlyTotal)}</td><td class="val-bold">${formatCZK(monthlyClient)}</td></tr>
         <tr><td>Výnosnost</td><td>${(yieldPA * 100).toFixed(2)} % p.a.</td><td>${(pfYield * 100).toFixed(2)} % p.a.</td></tr>
-        <tr><td><strong>Počáteční investice</strong></td>
-        <td class="val-bold">${formatCZK(buildingsVal)}</td>
-        <td class="val-bold">${formatCZK(pfInitialInvestment)}</td></tr>
+        <tr><td><strong>Počáteční investice</strong></td><td class="val-bold">${formatCZK(buildingsVal)}</td><td class="val-bold">${formatCZK(pfInitialInvestment)}</td></tr>
     `;
 
     document.getElementById('buildingClientInfoTable').innerHTML = `
@@ -582,8 +611,7 @@ function calculateBuildingSavingsComparison() {
     `;
 
     document.getElementById('buildingFinalReturn').innerHTML = `
-        <tr><td><strong>Celkem k reinvestici</strong></td>
-        <td class="val-bold">${formatCZK(returnedAmount)}</td></tr>
+        <tr><td><strong>Celkem k reinvestici</strong></td><td class="val-bold">${formatCZK(returnedAmount)}</td></tr>
     `;
 
     document.getElementById('pfInfoTable').innerHTML = `
@@ -592,24 +620,20 @@ function calculateBuildingSavingsComparison() {
         <tr><td>Jednorázová investice</td><td class="val-bold">${formatCZK(pfInitialInvestment)}</td></tr>
     `;
 
+    // Chart data
     const labels = [];
     const oldData = [];
     const newData = [];
     const investedData = [];
 
     for (let y = 0; y <= years; y++) {
-
         labels.push(`${y}. rok`);
-
-        oldData.push(futureValue(buildingsVal, monthlyClient, yieldPA, y));
+        oldData.push(futureValue(buildingsVal, monthlyClient, yieldPA, y));   // original logic kept
         newData.push(futureValue(pfInitialInvestment, monthlyClient, pfYield, y));
-
-        const invested = pfInitialInvestment + monthlyClient * 12 * y;
-        investedData.push(invested);
+        investedData.push(pfInitialInvestment + monthlyClient * 12 * y);
     }
 
     const ctx = document.getElementById('buildingLineChart').getContext('2d');
-
     if (buildingLineChart) buildingLineChart.destroy();
 
     buildingLineChart = new Chart(ctx, {
@@ -617,83 +641,35 @@ function calculateBuildingSavingsComparison() {
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Nové řešení',
-                    data: newData,
-                    borderColor: '#6d9f88',
-                    backgroundColor: '#6d9f883f',
-                    tension: 0.1,
-                    borderWidth: 1,
-                    fill: 1
-                },
-                {
-                    label: 'Aktuální řešení',
-                    data: oldData,
-                    borderColor: '#cc331d',
-                    backgroundColor: '#cc331d5f',
-                    tension: 0.1,
-                    borderWidth: 1,
-                    fill: 2
-                },
-                {
-                    label: 'Celková investice',
-                    data: investedData,
-                    borderColor: '#45403a',
-                    backgroundColor:'#45403a61',
-                    tension: 0,
-                    borderWidth: 1,
-                    fill: false
-                }
+                { label: 'Nové řešení',     data: newData,   borderColor: '#6d9f88', backgroundColor: '#6d9f883f', tension: 0.1, borderWidth: 1, fill: 1 },
+                { label: 'Aktuální řešení', data: oldData,   borderColor: '#cc331d', backgroundColor: '#cc331d5f', tension: 0.1, borderWidth: 1, fill: 2 },
+                { label: 'Celková investice', data: investedData, borderColor: '#45403a', backgroundColor: '#45403a61', tension: 0, borderWidth: 1, fill: false }
             ]
         },
         options: {
             maintainAspectRatio: false,
             plugins: { legend: { position: 'bottom' } },
-            scales: {
-                y: {
-                    ticks: {
-                        callback: value => formatCZK(value)
-                    }
-                }
-            }
+            scales: { y: { ticks: { callback: value => formatCZK(value) } } }
         }
     });
 }
 
-document.querySelectorAll(
-    '#building-savings-comparison input'
-).forEach(el => el.addEventListener('input', calculateBuildingSavingsComparison));
-
+document.querySelectorAll('#building-savings-comparison input').forEach(el =>
+    el.addEventListener('input', calculateBuildingSavingsComparison)
+);
 calculateBuildingSavingsComparison();
 
-// CLIENT CARE
-
-let carePortfolioChart;
-let careYieldChart;
+// ====================== CLIENT CARE ======================
+let carePortfolioChart = null;
+let careYieldChart = null;
 
 function calculateClientCare() {
-
     const assets = [
-        {
-            name: 'Zlato',
-            invested: parseFloat(document.getElementById('totalInvestmentGold').value) || 0,
-            current: parseFloat(document.getElementById('currentValueGold').value) || 0
-        },
-        {
-            name: 'Stříbro',
-            invested: parseFloat(document.getElementById('totalInvestmentSilver').value) || 0,
-            current: parseFloat(document.getElementById('currentValueSilver').value) || 0
-        },
-        {
-            name: 'Bitcoin',
-            invested: parseFloat(document.getElementById('totalInvestmentBTC').value) || 0,
-            current: parseFloat(document.getElementById('currentValueBTC').value) || 0
-        },
-        {
-            name: 'Permanentní fond',
-            invested: parseFloat(document.getElementById('totalInvestmentPF').value) || 0,
-            current: parseFloat(document.getElementById('currentValuePF').value) || 0
-        }
+        { name: 'Zlato',           invested: parseFloat(document.getElementById('totalInvestmentGold').value) || 0, current: parseFloat(document.getElementById('currentValueGold').value) || 0 },
+        { name: 'Stříbro',         invested: parseFloat(document.getElementById('totalInvestmentSilver').value) || 0, current: parseFloat(document.getElementById('currentValueSilver').value) || 0 },
+        { name: 'Bitcoin',         invested: parseFloat(document.getElementById('totalInvestmentBTC').value) || 0, current: parseFloat(document.getElementById('currentValueBTC').value) || 0 },
+        { name: 'Ethereum',        invested: parseFloat(document.getElementById('totalInvestmentETH').value) || 0, current: parseFloat(document.getElementById('currentValueETH').value) || 0 },   // ← NEW
+        { name: 'Permanentní fond',invested: parseFloat(document.getElementById('totalInvestmentPF').value) || 0, current: parseFloat(document.getElementById('currentValuePF').value) || 0 }
     ];
 
     let totalInvestment = 0;
@@ -702,44 +678,35 @@ function calculateClientCare() {
     assets.forEach(asset => {
         totalInvestment += asset.invested;
         totalCurrent += asset.current;
-
         asset.profit = asset.current - asset.invested;
-        asset.yield = asset.invested > 0
-            ? asset.profit / asset.invested
-            : 0;
+        asset.yield = asset.invested > 0 ? asset.profit / asset.invested : 0;
     });
 
     const totalProfit = totalCurrent - totalInvestment;
-    const totalYield = totalInvestment > 0
-        ? totalProfit / totalInvestment
-        : 0;
+    const totalYield = totalInvestment > 0 ? totalProfit / totalInvestment : 0;
 
     document.getElementById('careTotalInvestment').innerText = formatCZK(totalInvestment);
     document.getElementById('careCurrentValue').innerText = formatCZK(totalCurrent);
     document.getElementById('careProfit').innerText = formatCZK(totalProfit);
-    document.getElementById('careYield').innerText = (totalYield * 100).toFixed(1) + ' %';
+    document.getElementById('careYield').innerText = `${(totalYield * 100).toFixed(1)} %`;
 
+    // Table
     const tableBody = document.getElementById('careTable');
     tableBody.innerHTML = '';
-
     assets.forEach(asset => {
-
         const yieldPercent = (asset.yield * 100).toFixed(1);
-
         tableBody.innerHTML += `
             <tr>
                 <td>${asset.name}</td>
                 <td>${formatCZK(asset.invested)}</td>
                 <td>${formatCZK(asset.current)}</td>
-                <td style="color:${asset.yield >= 0 ? 'var(--accent)' : 'var(--success)'}">
-                    ${yieldPercent} %
-                </td>
+                <td style="color:${asset.yield >= 0 ? 'var(--accent)' : 'var(--success)'}">${yieldPercent} %</td>
             </tr>
         `;
     });
 
+    // Portfolio doughnut
     const portfolioCtx = document.getElementById('carePortfolioChart').getContext('2d');
-
     if (carePortfolioChart) carePortfolioChart.destroy();
 
     carePortfolioChart = new Chart(portfolioCtx, {
@@ -748,33 +715,23 @@ function calculateClientCare() {
             labels: assets.map(a => a.name),
             datasets: [{
                 data: assets.map(a => a.current),
-                backgroundColor: [
-                    '#edc079',
-                    '#b2ab9e',
-                    '#ffa23c',
-                    '#6d9f88'  
-                ],
+                backgroundColor: ['#edc079', '#b2ab9e', '#ffa23c', '#B9C4DE', '#6d9f88'],   // ETH color
                 borderWidth: 0
             }]
         },
         options: {
             maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom' }
-            }
+            plugins: { legend: { position: 'bottom' } }
         }
     });
 
+    // Yield bar chart
     const yieldCtx = document.getElementById('careYieldChart').getContext('2d');
-
     if (careYieldChart) careYieldChart.destroy();
 
-    const wrappedLabels = assets.map(a => {
-        if (a.name === 'Permanentní fond') {
-            return ['Permanentní', 'fond'];
-        }
-        return a.name;
-    });
+    const wrappedLabels = assets.map(a =>
+        a.name === 'Permanentní fond' ? ['Permanentní', 'fond'] : a.name
+    );
 
     careYieldChart = new Chart(yieldCtx, {
         type: 'bar',
@@ -783,43 +740,19 @@ function calculateClientCare() {
             datasets: [{
                 label: 'Zhodnocení (%)',
                 data: assets.map(a => a.yield * 100),
-                backgroundColor: assets.map(a =>
-                    a.yield >= 0 ? '#6d9f88' : '#cc331d'
-                )
+                backgroundColor: assets.map(a => a.yield >= 0 ? '#6d9f88' : '#cc331d')
             }]
         },
         options: {
             maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
+            plugins: { legend: { display: false } },
             scales: {
-                x: {
-                    ticks: {
-                        minRotation: 0,
-                        maxRotation: 0,
-                        font: {
-                            size: 11
-                        }
-                    }
-                },
+                x: { ticks: { minRotation: 0, maxRotation: 0, font: { size: 11 } } },
                 y: {
-                    ticks: {
-                        callback: value => value + ' %'
-                    },
+                    ticks: { callback: value => value + ' %' },
                     grid: {
-                        color: function(context) {
-                            if (context.tick.value === 0) {
-                                return '#000000';
-                            }
-                            return '#e0e0e0';
-                        },
-                        lineWidth: function(context) {
-                            if (context.tick.value === 0) {
-                                return 2;
-                            }
-                            return 1;
-                        }
+                        color: ctx => ctx.tick.value === 0 ? '#000000' : '#e0e0e0',
+                        lineWidth: ctx => ctx.tick.value === 0 ? 2 : 1
                     }
                 }
             }
@@ -827,7 +760,5 @@ function calculateClientCare() {
     });
 }
 
-document.querySelectorAll('#client-care input')
-    .forEach(el => el.addEventListener('input', calculateClientCare));
-
+document.querySelectorAll('#client-care input').forEach(el => el.addEventListener('input', calculateClientCare));
 calculateClientCare();
