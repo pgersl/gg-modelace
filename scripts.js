@@ -254,8 +254,8 @@ function calculate() {
         const target = targets[key];
 
         let upfrontFee = 0;
-        let effectiveMonthlyDeductionRate = 0;
         let totalFeeToPay = 0;
+        let effectiveMonthlyDeductionRate = 0;
         let feeMethodText = '';
 
         if (key === 'btc' || key === 'eth') {
@@ -265,42 +265,41 @@ function calculate() {
             const baseFeeRate = asset.feeRate;
             if (feeTypeCom === 'payg') {
                 upfrontFee = target * 0.01;
-                totalFeeToPay = target * (baseFeeRate + 0.01);
+                totalFeeToPay = upfrontFee + (initInv - upfrontFee) * baseFeeRate;
                 effectiveMonthlyDeductionRate = baseFeeRate;
                 feeMethodText = 'Postupně splácený';
             } else {
-                upfrontFee = target * baseFeeRate;
+                totalFeeToPay = target * baseFeeRate;
                 feeMethodText = 'Plně předplacený';
             }
         } else if (key === 'pf') {
             const baseFeeRate = asset.feeRate;
             if (feeTypePF === 'base') {
-                upfrontFee = 0;
+                totalFeeToPay = initInv * (baseFeeRate + 0.01);
                 feeMethodText = 'Základní';
                 effectiveMonthlyDeductionRate = baseFeeRate + 0.01;
             } else if (feeTypePF === 'partial') {
                 upfrontFee = target * 0.01;
-                totalFeeToPay = target * (baseFeeRate + 0.005);
-                effectiveMonthlyDeductionRate = baseFeeRate - 0.005;
+                totalFeeToPay = upfrontFee + (initInv - upfrontFee) * (baseFeeRate + 0.005);
+                effectiveMonthlyDeductionRate = baseFeeRate + 0.005;
                 feeMethodText = 'Částečně předplacený';
             } else {
-                upfrontFee = target * baseFeeRate;
+                totalFeeToPay = target * baseFeeRate;
                 feeMethodText = 'Plně předplacený';
             }
         }
 
-        const startVal = Math.max(0, (initInv - upfrontFee) * (1 - asset.spread));
+        const startVal = Math.max(0, (initInv - totalFeeToPay) * (1 - asset.spread));
 
-        // === FIXED: Spread applied FIRST, then monthly fee ===
-        const grossAfterSpread = monthInv * (1 - asset.spread);
-        const monthlyFeeCZK = monthInv * effectiveMonthlyDeductionRate;           // for table
-        const netMonthlyInvestment = Math.max(0, grossAfterSpread - monthlyFeeCZK); // for table + simulation
+        const monthlyFeeCZK = monthInv * effectiveMonthlyDeductionRate;
+        const grossAfterSpread = (monthInv - monthlyFeeCZK) * (1 - asset.spread);
+        const netMonthlyInvestment = Math.max(0, grossAfterSpread);
 
         lumpHtml += `<tr>
             <td>${asset.name}</td>
             <td>${formatCZK(initInv)}</td>
             <td>${feeMethodText}</td>
-            <td>${formatCZK(upfrontFee)}</td>
+            <td>${formatCZK(totalFeeToPay)}</td>
             <td>${(asset.spread*100).toFixed(1)} %</td>
             <td class="val-bold">${formatCZK(startVal)}</td>
         </tr>`;
@@ -313,31 +312,14 @@ function calculate() {
             <td class="val-bold">${formatCZK(netMonthlyInvestment)}</td>
         </tr>`;
 
-        // === Accurate simulation (same net amount as table) ===
         let currentVal = startVal;
         let cumulativeInvested = initInv;
-        let remainingFeeToPay = totalFeeToPay - upfrontFee;
-        let currentMonthlyFeeRate = effectiveMonthlyDeductionRate;
 
         chartValue[0] += currentVal;
 
         for (let y = 1; y <= years; y++) {
             for (let m = 1; m <= 12; m++) {
-                let monthlyDeduction = 0;
-                if (remainingFeeToPay > 0 && currentMonthlyFeeRate > 0) {
-                    monthlyDeduction = monthInv * currentMonthlyFeeRate;
-                    if (monthlyDeduction > remainingFeeToPay) monthlyDeduction = remainingFeeToPay;
-                    remainingFeeToPay -= monthlyDeduction;
-                }
-
-                if (key === 'pf' && feeTypePF === 'base') {
-                    if (cumulativeInvested < 1000000) currentMonthlyFeeRate = 0.05;
-                    else if (cumulativeInvested < 5000000) currentMonthlyFeeRate = 0.04;
-                    else currentMonthlyFeeRate = 0.03;
-                }
-
-                const netMonthly = grossAfterSpread - monthlyDeduction;   // ← this is the real amount invested each month
-                currentVal = currentVal * (1 + asset.yield / 12) + netMonthly;
+                currentVal = currentVal * Math.pow(1 + asset.yield, 1 / 12) + netMonthlyInvestment;
                 cumulativeInvested += monthInv;
             }
             chartValue[y] += currentVal;
