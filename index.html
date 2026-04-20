@@ -13,7 +13,7 @@
     <link href="https://cdn.prod.website-files.com/62039ab2063c101f554e89fc/622341cf2db92364efe0ffc4_gg%20favicon.png" rel="icon" type="image/png"/><link href="https://cdn.prod.website-files.com/62039ab2063c101f554e89fc/622341d2b60aee5450d0a749_gg%20webclip.png" rel="apple-touch-icon"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src=https://kit.fontawesome.com/9ab7bfa7fc.js crossorigin=anonymous></script>
-    <script src="scripts.js" defer></script>
+    <script src="js/main.js" type="module"></script>
 </head>
 <body>
     <div class="container">
@@ -23,18 +23,25 @@
         </div>
         <nav class="no-print">
             <button class="nav-button">Investiční kalkulačka</button>
+            <button class="nav-button">Nekonečná renta</button>
             <button class="nav-button">Kompletní řešení</button>
             <button class="nav-button">DPS/PP</button>
             <button class="nav-button">Stavební spoření</button>
+            <button class="nav-button">Hypotéka</button>
             <button class="nav-button">Péče</button>
         </nav>
         <div class="title only-print">
             <h1>Investiční kalkulačka</h1>
+            <h1>Modelace nekonečné renty</h1>
             <h1>Modelace kompletního řešení</h1>
             <h1>Srovnání DPS/PP a DIP</h1>
             <h1>Srovnání stavebního spoření a permanentního fondu</h1>
+            <h1>Srovnání úspor na hypotéce</h1>
             <h1>Shrnutí vašeho protfolia</h1>
         </div>
+
+        <!--    ============ INVESTMENT CALCULATOR =============    -->
+
         <div class="main-grid" id="investment-calculator">
             <div class="sidebar no-print">
                 <div class="card">
@@ -44,7 +51,7 @@
                         <input type="number" id="calcInit" value="500000" step="1000">
                     </div>
                     <div class="input-group">
-                        <label>Měsíční úložka celkem (Kč)</label>
+                        <label>Měsíční úložka (Kč)</label>
                         <input type="number" id="calcMonthly" value="5000" step="500">
                     </div>
                     <div class="input-group">
@@ -93,6 +100,48 @@
                 </div>
             </div>
         </div>
+
+        <!--    ============ INFINITE PAYOUT =============    -->
+
+        <div class="main-grid" id="infinite-payout">
+            <div class="sidebar no-print">
+                <div class="card">
+                    <h2>Vstupní parametry</h2>
+                    <div class="input-group">
+                        <label>Měsíční renta (Kč)</label>
+                        <input type="number" id="payoutVal" value="25000" step="500">
+                    </div>
+                    <div class="input-group">
+                        <label>Jednorázová investice (Kč)</label>
+                        <input type="number" id="payoutInit" value="500000" step="1000">
+                    </div>
+                    <div class="input-group">
+                        <label>Průměrná roční výnosnost (% p.a.)</label>
+                        <input type="number" id="payoutYield" value="7.9" max="25" min="0" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Investiční horizont (roky)</label>
+                        <input type="number" id="payoutYears" value="20" max="100" min="1" step="1">
+                    </div>
+                </div>
+                <button class="print-button" onclick="window.print()">Exportovat kalkulačku</button>
+            </div>
+            <div class="content">
+                <div class="summary-grid">
+                    <div class="stat-card" style="background-color: var(--primary);"><div>Celkem investováno</div><div id="payoutInvested">0 Kč</div></div>
+                    <div class="stat-card" style="background:var(--success)"><div>Budoucí hodnota</div><div id="payoutFinal">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--accent);"><div>Nekonečná renta</div><div id="payoutTotal">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--gold);"><div>Měsíční úložka</div><div id="payoutMonthly">0 Kč</div></div>
+                </div>
+                <div class="card">
+                    <h2>Vývoj investice v čase</h2>
+                    <div class="chart-box"><canvas id="payoutChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!--    ============ COMPLETE SOLUTION =============    -->
+
         <div class="main-grid" id="complete-solution">
             <div class="sidebar no-print">
                 <div class="card">
@@ -218,6 +267,9 @@
                 </div>
             </div>
         </div>
+
+        <!--    ============ PENSION COMPARISON =============    -->
+
         <div class="main-grid" id="pension-comparison">
             <div class="sidebar no-print">
                 <div class="card">
@@ -331,6 +383,9 @@
                 </div>
             </div>
         </div>
+
+        <!--    ============ BUILDING SAVINGS COMPARISON =============    -->
+
         <div class="main-grid" id="building-savings-comparison">
             <div class="sidebar no-print">
                 <div class="card">
@@ -355,7 +410,7 @@
                         <input type="number" id="buildingClientDeposit" value="150000" step="1000">
                     </div>
                     <div class="input-group">
-                        <label>Celková státní podpora (%)</label>
+                        <label>Celková státní podpora (Kč)</label>
                         <input type="number" id="buildingStateDeposit" value="3000" step="1000">
                     </div>
                 </div>
@@ -432,6 +487,111 @@
                 </div>
             </div>
         </div>
+
+        <!--    ============ MORTGAGE COMPARISON =============    -->
+
+        <div class="main-grid" id="mortgage-comparison">
+            <div class="sidebar no-print">
+                <div class="card">
+                    <h2>Vstupní parametry</h2>
+                    <div class="input-group">
+                        <label>Výše úvěru</label>
+                        <input type="number" id="mortgageLoan" value="5000000" step="100000">
+                    </div>
+                    <div class="input-group">
+                        <label>Doba splatnosti (roky)</label>
+                        <input type="number" id="mortgageDuration" value="30" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label>Úroková sazba (%)</label>
+                        <input type="number" id="mortgageRate" value="5" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Celkový měsíční rozpočet (Kč)</label>
+                        <input type="number" id="mortgageMonthlyDeposit" value="30000" step="1000">
+                    </div>
+                </div>
+                <button class="print-button" onclick="window.print()">Exportovat srovnání</button>
+            </div>
+            <div class="content">
+                <div class="summary-grid">
+                    <div class="stat-card" style="background-color: var(--primary);"><div></div><div id="mortgageEarlyRepayment">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--success);"><div></div><div id="mortgageOldStrategy">0 Kč</div></div>
+                    <div class="stat-card" style="background:var(--accent)"><div></div><div id="mortgageNewStrategy">0 Kč</div></div>
+                    <div class="stat-card" style="background-color: var(--gold);"><div></div><div id="mortgageStrategyDifference">0 Kč</div></div>
+                </div>
+                <div class="card" id="mortgageComparison">
+                    <h2>Srovnání</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Parametr</th>
+                                <th>Bez akce</th>
+                                <th>Zrychlené splácení</th>
+                                <th>Úvěr s investicí</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mortgageComparisonTable"></tbody>
+                    </table>
+                </div>
+                <div class="card" id="mortgageChartContainer">
+                    <h2>Vývoj úvěru v čase</h2>
+                    <div class="chart-box"><canvas id="mortgageLineChart"></canvas></div>
+                </div>
+                <div class="card" id="mortgageInfo2">
+                    <h2>Vývoj úvěru při investici k předčasnému splacení</h2>
+                    <div class="tables-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rok</th>
+                                    <th>Zůstatek úvěru</th>
+                                    <th>Celkové úrokové náklady</th>
+                                    <th>Celkové jistinné náklady</th>
+                                    <th>Celková hodnota investice</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mortgageInfo2Table"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card no-print" id="mortgageInfo1">
+                    <h2>Vývoj úvěru při zrychleném splácení</h2>
+                    <div class="tables-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rok</th>
+                                    <th>Zůstatek úvěru</th>
+                                    <th>Celkové úrokové náklady</th>
+                                    <th>Celkové jistinné náklady</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mortgageInfo1Table"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card no-print" id="mortgageInfo3">
+                    <h2>Vývoj úvěru při standardním splácení</h2>
+                    <div class="tables-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rok</th>
+                                    <th>Zůstatek úvěru</th>
+                                    <th>Celkové úrokové náklady</th>
+                                    <th>Celkové jistinné náklady</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mortgageInfo3Table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!--    ============ CLIENT CARE =============    -->
+
         <div class="main-grid" id="client-care">
             <div class="sidebar no-print">
                 <div class="card">
@@ -524,6 +684,8 @@
                 </div>
             </div>
         </div>
+
+
     </div>
 </body>
 </html>

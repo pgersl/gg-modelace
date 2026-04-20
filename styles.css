@@ -221,6 +221,10 @@ td:first-child {
     display: none;
 }
 
+#mortgageChartContainer .chart-box {
+    height: 500px !important;
+}
+
 @media print {
     .no-print {
         display: none !important;
@@ -250,5 +254,7 @@ td:first-child {
     .title {
         margin-bottom: 0 !important;
     }
-    
+    #mortgageInfo2 {
+        page-break-inside: avoid;
+    }
 }
