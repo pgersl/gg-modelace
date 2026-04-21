@@ -294,12 +294,16 @@ export function calculateMortgageComparison() {
     const mapC = new Map(stratC.yearlyData.map(d => [d.year, d]));
 
     const balanceA   = labels.map((_, y) => mapA.get(y)?.balance    ?? 0);
-    const balanceB   = labels.map((_, y) => mapB.get(y)?.balance    ?? 0);
+    const balanceB   = labels.map((_, y) => {
+        const pt = mapB.get(y);
+        if (!pt) return null;
+        if (pt.balance <= 0.01 && !pt.earlyRepayment) return 0;
+        return pt.balance;
+    });
     const balanceC   = labels.map((_, y) => mapC.get(y)?.loanBalance ?? 0);
     const investData = labels.map((_, y) => {
         const pt = mapC.get(y);
         if (!pt) return null;
-        // Stop drawing portfolio line once loan is repaid (except on the repayment year itself)
         if (pt.loanBalance <= 0.01 && !pt.earlyRepayment) return null;
         return pt.investValue;
     });
